@@ -79,6 +79,16 @@ TYPES: dict[str, dict] = {
         "caption": "Welche Nummer bleibt als Letzte drin? 👀 Schreib deinen Tipp in die Kommentare!",
         "tags": ["#satisfying", "#simulation", "#bouncingball", "#oddlysatisfying", "#physics"],
     },
+    "string_art": {
+        "label": "Faden-Netz",
+        "query": "bouncing ball every bounce adds a line",
+        "idee": "Ein leuchtender Ball springt in einem Kreis. Jeder Aufprall setzt einen Punkt und spannt einen neuen "
+                "Faden – entweder alle Fäden zum Ball (ein Netz, das ihm folgt) oder von Treffer zu Treffer (ein "
+                "Fadenbild). Jeder Aufprall spielt die nächste Note, die Zahl oben zählt die Fäden.",
+        "params": {"points": (30, 120, 60), "gravity": (0.6, 1.5, 1.0), "web": ["ball", "chain"]},
+        "caption": "Jeder Aufprall spannt einen neuen Faden 🕸️ Wie sieht es am Ende aus?",
+        "tags": ["#satisfying", "#stringart", "#bouncingball", "#oddlysatisfying", "#simulation"],
+    },
 }
 
 MELODY_LABELS = {
@@ -103,7 +113,8 @@ MAX_TAGS = 5
 # Bei diesen Arten spielt jeder Punkt/jedes Team eigene Töne – eine Melodie passt dort nicht.
 SCALE_ONLY = {"polyrhythm", "color_wars", "galton"}
 DEFAULT_SOUND = {"ring_escape": "bell", "escape_multiply": "glass", "growing_ball": "pluck",
-                 "color_wars": "marimba", "polyrhythm": "glass", "galton": "kalimba", "spin_arena": "bell"}
+                 "color_wars": "marimba", "polyrhythm": "glass", "galton": "kalimba", "spin_arena": "bell",
+                 "string_art": "glass"}
 
 
 def type_for(text: str) -> str | None:

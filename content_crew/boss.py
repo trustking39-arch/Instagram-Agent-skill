@@ -287,19 +287,31 @@ class Boss:
 
     # --- Serienproduktion ----------------------------------------------
     def run_batch(self, niches: list[str], count: int) -> list[int]:
-        """count Videos über mehrere Nischen erstellen; sie warten danach auf den Upload."""
+        """count Videos über mehrere Nischen erstellen; sie warten danach auf den Upload.
+
+        count <= 0 heißt: ohne Ende weiterproduzieren, bis der Besitzer STOP schickt.
+        """
+        endless = count <= 0
         created: list[int] = []
         learnings = self.db.notes("learning", 10)
         instructions = self.db.notes("instruction", 3)
         insights_cache: dict[str, dict] = {}
         attempts = 0
-        while len(created) < count and attempts < count * 2:
+        while endless or (len(created) < count and attempts < count * 2):
+            if endless:
+                instructions = self.handle_inbox() + self.db.notes("instruction", 3)
+                if self.db.paused:
+                    self.db.set_activity("jarvis", "pausiert (STOP) – Dauerproduktion angehalten")
+                    break
+                if attempts and attempts % 50 == 0:
+                    insights_cache.clear()  # Trends regelmäßig neu ansehen
+                    learnings = self.db.notes("learning", 10)
             niche = niches[attempts % len(niches)]
             attempts += 1
             kind = type_for(niche) if self.style == "animation" else None
             topic = TYPES[kind]["query"] if kind else niche
             act = self.db.set_activity
-            act("jarvis", f"Serie: Video {len(created) + 1} von {count} – „{niche}“")
+            act("jarvis", f"Serie: Video {len(created) + 1}{'' if endless else f' von {count}'} – „{niche}“")
             try:
                 if topic not in insights_cache:
                     act("scout", f"analysiert, was bei „{niche}“ viral geht")
@@ -318,7 +330,8 @@ class Boss:
             except Exception as exc:  # noqa: BLE001
                 log.exception("Serienvideo in %s fehlgeschlagen", niche)
                 act("jarvis", f"Fehler in „{niche}“: {exc}"[:200])
-        self.db.set_activity("jarvis", f"Serie fertig – {len(created)} Videos warten auf den Upload")
+        done = "pausiert (STOP)" if endless and self.db.paused else "Serie fertig"
+        self.db.set_activity("jarvis", f"{done} – {len(created)} Videos warten auf den Upload")
         return created
 
     def publish_pending(self, only: list[str] | None = None) -> list[int]:

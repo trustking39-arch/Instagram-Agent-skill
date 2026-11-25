@@ -120,3 +120,22 @@ def test_batch_uses_each_animation_type(anim_cfg):
     assert all(db.video(v)["status"] == "awaiting_approval" for v in created)
     assert boss.next_animation_type() not in ("color_wars", "polyrhythm")
     assert json.loads(json.dumps(db.video(created[0])["script"]))["hook"].startswith("Farben-Krieg")
+
+
+def test_endless_batch_stops_on_owner_stop(anim_cfg):
+    from content_crew.commands import handle_owner_message
+
+    db = DB(anim_cfg.data_dir / "crew.db")
+    boss = Boss(anim_cfg, db, DesignerLLM(scores=(9, 9, 9)), Notifier(anim_cfg, db), platforms={})
+    original = boss.create_video
+
+    def make_and_maybe_stop(*a, **kw):
+        vid = original(*a, **kw)
+        if len(db.videos(limit=10)) >= 2:
+            handle_owner_message(db, "STOP")
+        return vid
+
+    boss.create_video = make_and_maybe_stop
+    created = boss.run_batch(["Faden-Netz", "Galton-Brett"], 0)
+    assert [db.video(v)["script"]["type"] for v in created] == ["string_art", "galton"]
+    assert "pausiert" in db.activity("jarvis")["text"]
