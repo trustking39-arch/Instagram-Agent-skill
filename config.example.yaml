@@ -1,0 +1,39 @@
+# Kopiere diese Datei nach config.yaml und passe sie an.
+
+niche: "Motivation und Selbstverbesserung"   # Dein Themengebiet
+language: de
+platforms: [youtube, instagram, tiktok]        # wo hochgeladen/analysiert wird
+
+llm:                                           # Jarvis (OpenJarvis-Server)
+  base_url: http://127.0.0.1:8000/v1
+  model: qwen3.5:9b
+  timeout_seconds: 600
+
+boss:                                          # Jarvis als Chef
+  videos_per_cycle: 1
+  cycle_minutes: 240                           # alle 4 Stunden ein Durchlauf
+  min_script_score: 7                          # 1-10, darunter muss nachgebessert werden
+  max_revisions: 2
+  auto_publish: true                           # false = Jarvis fragt per SMS "OK <id>"
+
+virality:
+  viral_multiplier: 3.0                        # 3x so viele Views wie dein Median = viral
+  viral_min_views: 10000
+
+notify:
+  call_on: [viral, blocked]                    # bei diesen Ereignissen ruft Jarvis an
+  sms_on: [question, published, error, approval, report]
+  public_base_url: ""                          # leer = wird automatisch per cloudflared-Tunnel erzeugt
+  tunnel: auto                                 # auto | off
+
+video:
+  width: 1080
+  height: 1920
+  fps: 30
+  tts: edge                                    # edge | espeak | none
+  voice: de-DE-KatjaNeural
+  font: ""                                     # leer = automatisch
+  background_dir: ""                           # optional: Ordner mit eigenen Clips/Bildern
+
+data_dir: ./data
+dry_run: false                                 # true = nichts hochladen, keine SMS/Anrufe
