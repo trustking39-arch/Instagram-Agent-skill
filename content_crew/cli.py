@@ -175,6 +175,39 @@ def cmd_serve(args) -> None:
     _serve(cfg, db, args.port)
 
 
+DEFAULT_NICHES = [
+    "Motivation", "Fitness für Anfänger", "Geld sparen im Alltag", "Psychologie-Fakten", "Produktivität",
+    "Schnelle Rezepte", "Reise-Tipps", "Handy- und Tech-Tricks", "Beziehungen und Dating", "Verrückte Fakten",
+]
+
+
+def cmd_batch(args) -> None:
+    cfg, db = _setup(args)
+    niches = [n.strip() for n in args.niches.split(",") if n.strip()] if args.niches else DEFAULT_NICHES
+    boss = _boss(cfg, db)
+    created = boss.run_batch(niches, args.count)
+    print(f"Fertig: {len(created)} Videos erstellt, sie warten auf den Upload.")
+    for vid in created:
+        v = db.video(vid)
+        print(f"  #{vid} {v['script']['title']}  ({v['score']:.0f}/10)  {v['path']}")
+    if args.call:
+        boss.notifier.call(f"Hallo, hier ist Jarvis. Die Serie ist fertig: {len(created)} neue Videos warten "
+                           "auf deine Freigabe zum Hochladen.", kind="done")
+
+
+def cmd_publish_pending(args) -> None:
+    cfg, db = _setup(args)
+    boss = _boss(cfg, db)
+    tunnel = _start_services(cfg, db, boss, 8787)
+    try:
+        only = [args.platform] if args.platform else None
+        done = boss.publish_pending(only)
+        print(f"{len(done)} Videos an {args.platform or 'alle Plattformen'} übergeben.")
+    finally:
+        if tunnel:
+            tunnel.stop()
+
+
 def cmd_status(args) -> None:
     cfg, db = _setup(args)
     print(status_text(db))
@@ -246,6 +279,14 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--ask", action="store_true", help="nach Antwort per Sprache fragen")
     p.set_defaults(func=cmd_call)
     sub.add_parser("setup", help="Einrichtungs-Assistent").set_defaults(func=cmd_setup)
+    p = sub.add_parser("batch", help="viele Videos auf einmal erstellen (warten danach auf den Upload)")
+    p.add_argument("--count", type=int, default=20)
+    p.add_argument("--niches", help="Nischen, durch Komma getrennt (Standard: 10 beliebte TikTok-Nischen)")
+    p.add_argument("--call", action="store_true", help="danach anrufen")
+    p.set_defaults(func=cmd_batch)
+    p = sub.add_parser("publish-pending", help="alle wartenden Videos hochladen")
+    p.add_argument("--platform", choices=["youtube", "instagram", "tiktok"])
+    p.set_defaults(func=cmd_publish_pending)
     sub.add_parser("auth-youtube", help="einmalig bei YouTube anmelden").set_defaults(func=cmd_auth_youtube)
     p = sub.add_parser("auth-instagram", help="Instagram verbinden")
     p.add_argument("--token", help="Token aus dem Graph API Explorer")

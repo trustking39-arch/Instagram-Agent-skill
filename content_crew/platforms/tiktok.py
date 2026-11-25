@@ -83,6 +83,7 @@ class TikTok(Platform):
                 "disable_comment": False,
                 "disable_duet": False,
                 "disable_stitch": False,
+                "is_aigc": True,  # TikTok verlangt die Kennzeichnung KI-generierter Inhalte
             },
             "source_info": {"source": "FILE_UPLOAD", "video_size": size, "chunk_size": chunk, "total_chunk_count": count},
         })

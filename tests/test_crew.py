@@ -249,3 +249,19 @@ def test_webhook_rejects_everyone_without_owner_number(cfg, db, monkeypatch):
     client = TestClient(create_app(cfg, db))
     assert client.post("/sms", data={"From": "+4900", "Body": "STOP"}).status_code == 403
     assert not db.paused
+
+
+@pytest.mark.skipif(not shutil.which("ffmpeg"), reason="ffmpeg fehlt")
+def test_batch_then_publish_only_tiktok(cfg, db):
+    yt, tt = FakePlatform(cfg), FakePlatform(cfg)
+    yt.name, tt.name = "youtube", "tiktok"
+    boss = Boss(cfg, db, FakeLLM(scores=(9, 9, 9)), Notifier(cfg, db),
+                platforms={"youtube": yt, "tiktok": tt}, producer=VideoProducer(cfg))
+    created = boss.run_batch(["Fitness", "Kochen"], 3)
+    assert len(created) == 3
+    assert all(db.video(v)["status"] == "awaiting_approval" for v in created)
+    assert db.video(created[1])["idea"].startswith("[Kochen]")
+    assert yt.uploaded == [] and tt.uploaded == []
+    boss.publish_pending(only=["tiktok"])
+    assert len(tt.uploaded) == 3 and yt.uploaded == []
+    assert all(db.video(v)["platform_ids"].keys() == {"tiktok"} for v in created)

@@ -71,10 +71,11 @@ class Boss:
         return instructions
 
     # --- Planung & Qualitätskontrolle ----------------------------------
-    def plan(self, insights: dict, learnings: list[str], instructions: list[str], n: int) -> dict:
+    def plan(self, insights: dict, learnings: list[str], instructions: list[str], n: int,
+             niche: str | None = None) -> dict:
         recent = [v["script"]["title"] for v in self.db.videos(limit=15)]
         prompt = {
-            "nische": self.cfg["niche"],
+            "nische": niche or self.cfg["niche"],
             "trend_analyse": {k: insights.get(k) for k in ("patterns", "hooks", "topics", "formats", "avoid")},
             "unsere_learnings": learnings,
             "aktueller_fokus": self.db.notes("focus", 1),
@@ -100,7 +101,8 @@ class Boss:
             "Bewerte dieses Kurzvideo-Skript streng von 1 bis 10 (Hook, Tempo, Mehrwert, Viral-Potenzial, "
             "Call-to-Action). Gib konkrete Verbesserungen an. Enthält das Skript Heilversprechen, medizinische "
             "Behauptungen, Finanz-/Erfolgsgarantien oder irreführende Aussagen, ist der Score höchstens 3 – "
-            "solche Videos verstoßen gegen die Plattform-Regeln.\n"
+            "solche Videos verstoßen gegen die Plattform-Regeln. Weniger als 5 Szenen ist zu kurz für ein "
+            "Kurzvideo: dann höchstens 5.\n"
             f"{json.dumps(script, ensure_ascii=False)}\n"
             'JSON: {"score": 7, "feedback": "konkrete Verbesserungen"}',
             temperature=0.2,
@@ -112,7 +114,8 @@ class Boss:
         feedback = result.get("feedback", "") if isinstance(result, dict) else ""
         return {"score": score, "feedback": feedback if isinstance(feedback, str) else json.dumps(feedback)}
 
-    def create_video(self, idea: dict, insights: dict, learnings: list[str]) -> int | None:
+    def create_video(self, idea: dict, insights: dict, learnings: list[str],
+                     publish: bool | None = None) -> int | None:
         bcfg = self.cfg["boss"]
         act = self.db.set_activity
         brief = idea["idea"] + (f"\nAnweisung vom Chef: {idea['instructions']}" if idea.get("instructions") else "")
@@ -149,8 +152,11 @@ class Boss:
             log.exception("Videoproduktion fehlgeschlagen")
             return None
         self.db.update_video(video_id, path=str(path), status="produced")
-        if bcfg.get("auto_publish", True):
+        auto = bcfg.get("auto_publish", True) if publish is None else publish
+        if auto:
             self.publish(video_id)
+        elif publish is False:
+            self.db.update_video(video_id, status="awaiting_approval")
         else:
             self.db.update_video(video_id, status="awaiting_approval")
             self.notifier.notify(
@@ -160,14 +166,14 @@ class Boss:
             )
         return video_id
 
-    def publish(self, video_id: int) -> None:
+    def publish(self, video_id: int, only: list[str] | None = None) -> None:
         video = self.db.video(video_id)
         if not video or not video.get("path"):
             return
         from pathlib import Path
 
         self.db.set_activity("publisher", f"lädt Video #{video_id} hoch")
-        ids, errors = self.publisher.publish(Path(video["path"]), video["script"])
+        ids, errors = self.publisher.publish(Path(video["path"]), video["script"], only=only)
         self.db.set_activity("publisher", f"Video #{video_id}: {', '.join(ids) or 'keine Plattform'}"
                              + (" (Testmodus)" if self.cfg.dry_run else ""))
         self.report_errors(errors, f"Upload von Video {video_id}")
@@ -176,6 +182,42 @@ class Boss:
             self.notifier.notify("published", f"Hochgeladen: \"{video['script']['title']}\" auf {', '.join(ids)}.")
         elif not errors:
             self.db.add_note("log", f"Video {video_id}: keine Plattform eingerichtet")
+
+    # --- Serienproduktion ----------------------------------------------
+    def run_batch(self, niches: list[str], count: int) -> list[int]:
+        """count Videos über mehrere Nischen erstellen; sie warten danach auf den Upload."""
+        created: list[int] = []
+        learnings = self.db.notes("learning", 10)
+        instructions = self.db.notes("instruction", 3)
+        insights_cache: dict[str, dict] = {}
+        attempts = 0
+        while len(created) < count and attempts < count * 2:
+            niche = niches[attempts % len(niches)]
+            attempts += 1
+            act = self.db.set_activity
+            act("jarvis", f"Serie: Video {len(created) + 1} von {count} – Nische „{niche}“")
+            try:
+                if niche not in insights_cache:
+                    act("scout", f"analysiert, was in „{niche}“ viral geht")
+                    insights_cache[niche] = self.scout.run(niche)
+                    act("scout", f"fertig mit „{niche}“")
+                plan = self.plan(insights_cache[niche], learnings, instructions, 1, niche=niche)
+                for idea in plan["ideas"]:
+                    idea["idea"] = f"[{niche}] {idea['idea']}"
+                    vid = self.create_video(idea, insights_cache[niche], learnings, publish=False)
+                    if vid:
+                        created.append(vid)
+            except Exception as exc:  # noqa: BLE001
+                log.exception("Serienvideo in %s fehlgeschlagen", niche)
+                act("jarvis", f"Fehler in „{niche}“: {exc}"[:200])
+        self.db.set_activity("jarvis", f"Serie fertig – {len(created)} Videos warten auf den Upload")
+        return created
+
+    def publish_pending(self, only: list[str] | None = None) -> list[int]:
+        pending = [v["id"] for v in self.db.videos(status="awaiting_approval", limit=500)]
+        for vid in reversed(pending):
+            self.publish(vid, only=only)
+        return pending
 
     # --- Lernen aus Zahlen ---------------------------------------------
     def learn(self) -> None:

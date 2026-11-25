@@ -16,7 +16,8 @@ SYSTEM = (
 )
 
 FORMAT = (
-    "Regeln: title höchstens 70 Zeichen; 3 bis 8 scenes; text = gesprochener Satz (zugleich Untertitel); "
+    "Regeln: title höchstens 70 Zeichen; 5 bis 8 scenes (das Video soll 15-40 Sekunden lang sein); "
+    "jede Szene 1-2 Sätze; text = gesprochener Text (zugleich Untertitel); "
     "visual = 2-3 englische Suchbegriffe für ein passendes Stockvideo; 5-10 hashtags.\n"
     "Beispiel für die Struktur (Inhalt NICHT übernehmen):\n"
     '{"title": "Warum du morgens müde bist", "hook": "Du machst morgens diesen einen Fehler.", '

@@ -20,12 +20,14 @@ class Publisher:
         base = self.cfg["notify"].get("public_base_url", "").rstrip("/")
         return f"{base}/media/{video.name}" if base else ""
 
-    def publish(self, video: Path, script: dict) -> tuple[dict[str, str], list[PlatformError]]:
+    def publish(self, video: Path, script: dict, only: list[str] | None = None) -> tuple[dict[str, str], list[PlatformError]]:
         ids: dict[str, str] = {}
         errors: list[PlatformError] = []
         description = script.get("caption", "")
         tags = script.get("hashtags", [])
         for name, platform in self.platforms.items():
+            if only and name not in only:
+                continue
             if self.cfg.dry_run:
                 ids[name] = f"dryrun-{video.stem}"
                 log.info("[Testmodus] %s würde hochgeladen auf %s", video.name, name)
