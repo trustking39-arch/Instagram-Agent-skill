@@ -55,7 +55,10 @@ class ColorWars(Scene):
                 self.counts[team] += 1
         self.br = self.s * 0.5
         speed = self.s * 26 * float(params.get("speed", 1.0))
+        self.speed = speed
         rng = self.rng
+        # Jedes Team hat Phasen der Stärke und Schwäche: die Front schwappt hin und her (Drama!)
+        self.waves = [(rng.uniform(5.0, 9.0), rng.uniform(0, TAU)) for _ in range(self.teams)]
         self.balls: list[_Ball] = []
         for team in range(self.teams):
             for _ in range(max(1, int(params.get("balls_per_team", 1)))):
@@ -101,6 +104,10 @@ class ColorWars(Scene):
             self.finish()
         s, br = self.s, self.br
         for b in self.balls:
+            period, phase = self.waves[b.team]
+            want = self.speed * (1 + 0.45 * math.sin(TAU * self.t / period + phase))
+            have = math.hypot(b.vx, b.vy) or 1.0
+            b.vx, b.vy = b.vx * want / have, b.vy * want / have
             b.x += b.vx * h
             b.y += b.vy * h
             if b.x - br < self.x0:
