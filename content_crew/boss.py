@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import random
 import logging
 import re
 import time
@@ -54,6 +55,31 @@ class Boss:
         if self.animator is None:
             self.animator = Animator(self.cfg)
         return self.animator
+
+    def vary(self, concept: dict) -> dict:
+        """Abwechslung erzwingen: andere Farben, Musik und Einstellungen als die letzten Videos derselben Art."""
+        from content_crew.animation.catalog import MELODIES, PALETTES, SCALE_ONLY, SCALES, make_text, pick_hashtags
+        from content_crew.animation.catalog import random_concept
+
+        same = [v["script"] for v in self.db.videos(limit=40) if v["script"].get("type") == concept["type"]][:3]
+        if not same:
+            return concept
+        rng = random.Random(concept["seed"])
+        used = {s.get("palette") for s in same}
+        if concept["palette"] in used:
+            concept["palette"] = rng.choice([p for p in PALETTES if p not in used] or list(PALETTES))
+        music_pool = list(SCALES) if concept["type"] in SCALE_ONLY else list(MELODIES)
+        heard = {s.get("music") for s in same}
+        if concept["music"] in heard:
+            concept["music"] = rng.choice([m for m in music_pool if m not in heard] or music_pool)
+        if any(s.get("params") == concept["params"] for s in same):
+            concept["params"] = random_concept(concept["type"], rng)["params"]
+        if not self.designer.ki_text:
+            concept["title"], concept["caption"] = make_text(concept["type"], concept["params"], concept["music"],
+                                                             concept["seed"])
+        concept["hashtags"] = pick_hashtags(concept["hashtags"], concept["type"], concept["music"])
+        concept["hook"] = f"{concept['label']} · {concept['music']} · Farben {concept['palette']}"
+        return concept
 
     def recent_animations(self, limit: int = 8) -> list[str]:
         return [f"{v['script'].get('hook', '')} – „{v['script']['title']}“" for v in self.db.videos(limit=limit)
@@ -170,7 +196,7 @@ class Boss:
         brief = idea["idea"] + (f"\nAnweisung vom Chef: {idea['instructions']}" if idea.get("instructions") else "")
         recent = self.recent_animations()
         act("writer", f"entwirft: {idea['idea'][:80]}")
-        concept = self.designer.design(brief, insights, learnings, kind=kind, recent=recent)
+        concept = self.vary(self.designer.design(brief, insights, learnings, kind=kind, recent=recent))
         act("writer", f"Konzept fertig: „{concept['title']}“ ({concept['label']})")
         act("jarvis", f"prüft das Konzept „{concept['title']}“")
         verdict = self.review_animation(concept, recent)
@@ -180,8 +206,8 @@ class Boss:
             log.info("Chef: Konzept %.0f/10 – zurück an den Designer (%d)", verdict["score"], attempt + 1)
             act("jarvis", f"Note {verdict['score']:.0f}/10 – schickt das Konzept zurück: {verdict['feedback'][:120]}")
             act("writer", f"bessert nach (Versuch {attempt + 2})")
-            concept = self.designer.design(brief, insights, learnings, kind=concept["type"], previous=concept,
-                                           feedback=verdict["feedback"], recent=recent)
+            concept = self.vary(self.designer.design(brief, insights, learnings, kind=concept["type"],
+                                                     previous=concept, feedback=verdict["feedback"], recent=recent))
             act("writer", f"Überarbeitung fertig: „{concept['title']}“")
             verdict = self.review_animation(concept, recent)
         act("jarvis", f"Note {verdict['score']:.0f}/10 für „{concept['title']}“")

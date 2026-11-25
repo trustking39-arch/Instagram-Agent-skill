@@ -163,3 +163,15 @@ def test_polyrhythm_differs_between_videos():
         return SCENES["polyrhythm"](ctx, {"layout": "orbits", "dots": 21, "speed": 0.3}, headless=True).cycles
 
     assert len({tuple(cycles(s)) for s in range(1, 9)}) > 1
+
+
+def test_jarvis_varies_repeated_concepts(anim_cfg):
+    db = DB(anim_cfg.data_dir / "crew.db")
+    boss = Boss(anim_cfg, db, DesignerLLM(), Notifier(anim_cfg, db), platforms={})
+    first = normalize_concept({"type": "spin_arena", "palette": "fire", "music": "canon",
+                               "params": {"sides": 7, "balls": 10, "spin": 0.9, "gravity": 1.0}})
+    db.add_video("x", first, 8)
+    again = boss.vary(normalize_concept({**first, "seed": 4242}))
+    assert again["palette"] != "fire" and again["music"] != "canon"
+    assert again["params"] != first["params"]
+    assert "Siebeneck" not in again["title"] or again["params"]["sides"] == 7
