@@ -98,7 +98,7 @@ def _start_services(cfg: Config, db: DB, boss, port: int):
 
         new_password = secrets.token_urlsafe(9)
         set_env_values({"DASHBOARD_PASSWORD": new_password})
-        print(f"Passwort für die Übersicht (Handy): {new_password}  – gespeichert in .env")
+        print("Neues Passwort für die Übersicht (Handy) erzeugt – steht in .env unter DASHBOARD_PASSWORD")
     threading.Thread(target=_serve, args=(cfg, db, port), daemon=True).start()
     if cfg.dry_run or cfg["notify"].get("public_base_url") or cfg["notify"].get("tunnel", "auto") == "off":
         return None
