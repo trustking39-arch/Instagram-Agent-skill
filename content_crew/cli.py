@@ -181,9 +181,17 @@ DEFAULT_NICHES = [
 ]
 
 
+def _default_niches(cfg) -> list[str]:
+    if cfg["video"].get("style", "animation") == "animation":
+        from content_crew.animation.catalog import TYPES
+
+        return [spec["label"] for spec in TYPES.values()]
+    return DEFAULT_NICHES
+
+
 def cmd_batch(args) -> None:
     cfg, db = _setup(args)
-    niches = [n.strip() for n in args.niches.split(",") if n.strip()] if args.niches else DEFAULT_NICHES
+    niches = [n.strip() for n in args.niches.split(",") if n.strip()] if args.niches else _default_niches(cfg)
     boss = _boss(cfg, db)
     created = boss.run_batch(niches, args.count)
     print(f"Fertig: {len(created)} Videos erstellt, sie warten auf den Upload.")
@@ -206,6 +214,23 @@ def cmd_publish_pending(args) -> None:
     finally:
         if tunnel:
             tunnel.stop()
+
+
+def cmd_animate(args) -> None:
+    """Ohne KI ein Animationsvideo rendern – zum Ausprobieren der Engine."""
+    cfg, _ = _setup(args)
+    from content_crew.animation.catalog import TYPES
+    from content_crew.workers.animator import Animator
+
+    animator = Animator(cfg)
+    if args.fps:
+        animator.settings["fps"] = args.fps
+    kinds = [args.type] if args.type else list(TYPES)
+    for i in range(args.count):
+        kind = kinds[i % len(kinds)]
+        path, info, concept = animator.demo(kind, palette=args.palette, music=args.music, duration=args.duration)
+        print(f"{path}  {concept['label']} · {concept['music']} · {concept['palette']} · "
+              f"{info['duration']:.0f} s · {info['notes']} Töne")
 
 
 def cmd_status(args) -> None:
@@ -281,9 +306,17 @@ def main(argv: list[str] | None = None) -> None:
     sub.add_parser("setup", help="Einrichtungs-Assistent").set_defaults(func=cmd_setup)
     p = sub.add_parser("batch", help="viele Videos auf einmal erstellen (warten danach auf den Upload)")
     p.add_argument("--count", type=int, default=20)
-    p.add_argument("--niches", help="Nischen, durch Komma getrennt (Standard: 10 beliebte TikTok-Nischen)")
+    p.add_argument("--niches", help="Nischen/Animationsarten, durch Komma getrennt (Standard: alle Arten)")
     p.add_argument("--call", action="store_true", help="danach anrufen")
     p.set_defaults(func=cmd_batch)
+    p = sub.add_parser("animate", help="ohne KI ein Animationsvideo rendern (Test der Engine)")
+    p.add_argument("--type", choices=["ring_escape", "escape_multiply", "growing_ball", "color_wars", "polyrhythm"])
+    p.add_argument("--count", type=int, default=1)
+    p.add_argument("--palette")
+    p.add_argument("--music")
+    p.add_argument("--duration", type=int)
+    p.add_argument("--fps", type=int)
+    p.set_defaults(func=cmd_animate)
     p = sub.add_parser("publish-pending", help="alle wartenden Videos hochladen")
     p.add_argument("--platform", choices=["youtube", "instagram", "tiktok"])
     p.set_defaults(func=cmd_publish_pending)

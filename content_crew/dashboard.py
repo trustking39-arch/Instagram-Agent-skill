@@ -13,8 +13,8 @@ from content_crew.db import DB
 WORKERS = [
     ("jarvis", "Jarvis", "Chef", "plant, bewertet, lernt"),
     ("scout", "Trend-Scout", "Arbeiter", "findet, was gerade läuft"),
-    ("writer", "Skript-Autor", "Arbeiter", "schreibt Hook und Szenen"),
-    ("producer", "Video-Produzent", "Arbeiter", "baut das Video"),
+    ("writer", "Designer", "Arbeiter", "entwirft Animation, Musik und Caption"),
+    ("producer", "Animator", "Arbeiter", "rendert das Video mit Ton (60 fps)"),
     ("publisher", "Uploader", "Arbeiter", "lädt auf die Plattformen"),
     ("analyst", "Analyst", "Arbeiter", "misst, was viral geht"),
 ]

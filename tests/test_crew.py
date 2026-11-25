@@ -23,6 +23,7 @@ def cfg(tmp_path, monkeypatch):
     c = load_config(tmp_path / "missing.yaml")
     c["data_dir"] = str(tmp_path / "data")
     c["video"]["tts"] = "none"
+    c["video"]["style"] = "slides"  # diese Tests prüfen den Ablauf mit den einfachen Text-Videos
     c["platforms"] = []
     return c
 
@@ -192,7 +193,7 @@ def test_dashboard_shows_team_and_is_local_only(cfg, db, monkeypatch):
     db.set_activity("writer", "schreibt gerade")
     client = TestClient(create_app(cfg, db))
     page = client.get("/").text
-    assert "Skript-Autor" in page and "schreibt gerade" in page
+    assert "Designer" in page and "schreibt gerade" in page
     assert "Mein &lt;Test&gt; Video" in page and "Hochladen" in page
     assert client.get("/", headers={"cf-connecting-ip": "1.2.3.4"}, follow_redirects=False).status_code == 303
     r = client.post("/dashboard/cmd", data={"text": "STOP"}, follow_redirects=False)
@@ -219,7 +220,7 @@ def test_dashboard_from_phone_needs_password(cfg, db, monkeypatch):
     assert ok.headers["location"] == "/" and "jarvis_session" in ok.headers["set-cookie"]
     assert "Secure" in ok.headers["set-cookie"] and "HttpOnly" in ok.headers["set-cookie"]
     client.cookies.set("jarvis_session", ok.cookies.get("jarvis_session") or ok.headers["set-cookie"].split(";")[0].split("=", 1)[1])
-    assert "Skript-Autor" in client.get("/", headers=phone).text
+    assert "Designer" in client.get("/", headers=phone).text
     client.post("/dashboard/cmd", data={"text": "STOP"}, headers=phone)
     assert db.paused
 

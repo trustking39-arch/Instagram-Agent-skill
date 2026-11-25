@@ -8,12 +8,14 @@ import logging
 import re
 import time
 
+from content_crew.animation.catalog import TYPES, type_for
 from content_crew.config import Config
 from content_crew.db import DB
 from content_crew.llm import LLM
 from content_crew.notify import Notifier
 from content_crew.platforms import Platform, PlatformError, load_platforms
 from content_crew.workers import Analyst, Publisher, ScriptWriter, TrendScout, VideoProducer
+from content_crew.workers.animator import AnimationDesigner, Animator
 
 log = logging.getLogger(__name__)
 
@@ -36,6 +38,9 @@ class Boss:
         self.scout = TrendScout(llm, self.platforms)
         self.writer = ScriptWriter(llm, cfg.get("language", "de"))
         self.producer = producer
+        self.style = cfg["video"].get("style", "animation")
+        self.designer = AnimationDesigner(llm)
+        self.animator: Animator | None = None
         self.publisher = Publisher(cfg, self.platforms)
         self.analyst = Analyst(cfg, db, self.platforms)
 
@@ -44,6 +49,20 @@ class Boss:
         if self.producer is None:
             self.producer = VideoProducer(self.cfg)
         return self.producer
+
+    def _animator(self) -> Animator:
+        if self.animator is None:
+            self.animator = Animator(self.cfg)
+        return self.animator
+
+    def recent_animations(self, limit: int = 8) -> list[str]:
+        return [f"{v['script'].get('hook', '')} – „{v['script']['title']}“" for v in self.db.videos(limit=limit)
+                if v["script"].get("type") in TYPES]
+
+    def next_animation_type(self) -> str:
+        """Abwechslung: die Animationsart, die am längsten nicht dran war."""
+        used = [v["script"].get("type") for v in self.db.videos(limit=20)]
+        return min(TYPES, key=lambda k: (k in used, -used.index(k) if k in used else 0))
 
     def report_errors(self, errors: list[PlatformError], context: str) -> None:
         """Blockierende Fehler (Login abgelaufen usw.) per Anruf melden, aber höchstens 1x pro Tag."""
@@ -74,6 +93,8 @@ class Boss:
     def plan(self, insights: dict, learnings: list[str], instructions: list[str], n: int,
              niche: str | None = None) -> dict:
         recent = [v["script"]["title"] for v in self.db.videos(limit=15)]
+        if self.style == "animation":
+            recent = self.recent_animations(15)
         prompt = {
             "nische": niche or self.cfg["niche"],
             "trend_analyse": {k: insights.get(k) for k in ("patterns", "hooks", "topics", "formats", "avoid")},
@@ -82,14 +103,21 @@ class Boss:
             "anweisungen_vom_besitzer": instructions + self.db.notes("instruction", 5),
             "bereits_gemacht_nicht_wiederholen": recent,
         }
-        result = self.llm.chat_json(
-            BOSS_SYSTEM,
-            json.dumps(prompt, ensure_ascii=False, indent=1)
-            + f"\n\nPlane genau {n} neue Kurzvideo(s). JSON: "
-            '{"ideas": [{"idea": "konkrete Idee mit Hook", "why": "warum das viral gehen kann", '
-            '"instructions": "konkrete Anweisung an den Skript-Autor"}], '
-            '"question_for_owner": "nur falls dir wirklich etwas Wichtiges fehlt, sonst leer"}',
-        )
+        if self.style == "animation":
+            kinds = {k: f"{v['label']}: {v['idee']}" for k, v in TYPES.items()}
+            task = (f"\n\nPlane genau {n} neue ANIMIERTE Kurzvideo(s) für TikTok – keine Sätze im Bild, keine "
+                    "Fotos, nur hochwertige Animation mit Musik. Unser Animator kann: "
+                    + json.dumps(kinds, ensure_ascii=False) + "\nJSON: "
+                    '{"ideas": [{"type": "ring_escape", "idea": "konkrete Idee: Animation, Melodie, Farben, '
+                    'Höhepunkt", "why": "warum das viral gehen kann", "instructions": "konkrete Anweisung an '
+                    'den Animations-Designer"}], "question_for_owner": "nur falls dir wirklich etwas Wichtiges '
+                    'fehlt, sonst leer"}')
+        else:
+            task = (f"\n\nPlane genau {n} neue Kurzvideo(s). JSON: "
+                    '{"ideas": [{"idea": "konkrete Idee mit Hook", "why": "warum das viral gehen kann", '
+                    '"instructions": "konkrete Anweisung an den Skript-Autor"}], '
+                    '"question_for_owner": "nur falls dir wirklich etwas Wichtiges fehlt, sonst leer"}')
+        result = self.llm.chat_json(BOSS_SYSTEM, json.dumps(prompt, ensure_ascii=False, indent=1) + task)
         if not isinstance(result, dict):
             result = {"ideas": result if isinstance(result, list) else []}
         result["ideas"] = [i for i in result.get("ideas", []) if isinstance(i, dict) and i.get("idea")][:n]
@@ -107,6 +135,10 @@ class Boss:
             'JSON: {"score": 7, "feedback": "konkrete Verbesserungen"}',
             temperature=0.2,
         )
+        return self._verdict(result)
+
+    @staticmethod
+    def _verdict(result) -> dict:
         try:
             score = float(result.get("score", 0))
         except (TypeError, ValueError, AttributeError):
@@ -114,8 +146,90 @@ class Boss:
         feedback = result.get("feedback", "") if isinstance(result, dict) else ""
         return {"score": score, "feedback": feedback if isinstance(feedback, str) else json.dumps(feedback)}
 
+    def review_animation(self, concept: dict, recent: list[str]) -> dict:
+        shown = {k: concept.get(k) for k in ("type", "label", "params", "palette", "music", "sound", "duration",
+                                             "title", "caption", "hashtags")}
+        result = self.llm.chat_json(
+            BOSS_SYSTEM,
+            "Bewerte dieses Konzept für ein animiertes TikTok-Video streng von 1 bis 10: Spannung ab Sekunde 1, "
+            "klarer Höhepunkt, passende Melodie und Farben, Abwechslung zu unseren letzten Videos, Caption mit "
+            "Frage (lädt zu Kommentaren ein), passende Hashtags. Unwahre oder irreführende Caption: höchstens 3.\n"
+            f"Unsere letzten Videos: {'; '.join(recent) or 'noch keine'}\n"
+            f"{json.dumps(shown, ensure_ascii=False)}\n"
+            'JSON: {"score": 7, "feedback": "konkrete Verbesserungen"}',
+            temperature=0.2,
+        )
+        return self._verdict(result)
+
+    def create_animation(self, idea: dict, insights: dict, learnings: list[str],
+                         publish: bool | None = None) -> int | None:
+        """Designer entwirft, Jarvis prüft und schickt zurück, der Animator rendert."""
+        bcfg = self.cfg["boss"]
+        act = self.db.set_activity
+        kind = idea.get("type") if idea.get("type") in TYPES else type_for(idea.get("idea", ""))
+        brief = idea["idea"] + (f"\nAnweisung vom Chef: {idea['instructions']}" if idea.get("instructions") else "")
+        recent = self.recent_animations()
+        act("writer", f"entwirft: {idea['idea'][:80]}")
+        concept = self.designer.design(brief, insights, learnings, kind=kind, recent=recent)
+        act("writer", f"Konzept fertig: „{concept['title']}“ ({concept['label']})")
+        act("jarvis", f"prüft das Konzept „{concept['title']}“")
+        verdict = self.review_animation(concept, recent)
+        for attempt in range(int(bcfg["max_revisions"])):
+            if verdict["score"] >= bcfg["min_script_score"]:
+                break
+            log.info("Chef: Konzept %.0f/10 – zurück an den Designer (%d)", verdict["score"], attempt + 1)
+            act("jarvis", f"Note {verdict['score']:.0f}/10 – schickt das Konzept zurück: {verdict['feedback'][:120]}")
+            act("writer", f"bessert nach (Versuch {attempt + 2})")
+            concept = self.designer.design(brief, insights, learnings, kind=concept["type"], previous=concept,
+                                           feedback=verdict["feedback"], recent=recent)
+            act("writer", f"Überarbeitung fertig: „{concept['title']}“")
+            verdict = self.review_animation(concept, recent)
+        act("jarvis", f"Note {verdict['score']:.0f}/10 für „{concept['title']}“")
+        act("writer", "wartet")
+        video_id = self.db.add_video(idea["idea"], concept, verdict["score"])
+        if verdict["score"] <= 3:  # nur Regelverstöße verwerfen – die Bildqualität liefert die Engine
+            self.db.update_video(video_id, status="rejected")
+            self.db.add_note("log", f"Video {video_id} verworfen (Score {verdict['score']}): {verdict['feedback']}")
+            return None
+        try:
+            act("producer", f"animiert Video #{video_id}: {concept['label']}, {concept['duration']} s")
+            path, info = self._animator().produce(concept, video_id)
+            act("producer", f"Video #{video_id} fertig ({info['duration']:.0f} s, {info['fps']} fps, "
+                            f"{info['notes']} Töne)")
+        except Exception as exc:  # noqa: BLE001
+            act("producer", f"Fehler bei Video #{video_id}")
+            self.db.update_video(video_id, status="failed")
+            self.notifier.notify("error", f"Video {video_id} konnte nicht erstellt werden: {exc}"[:300])
+            log.exception("Animation fehlgeschlagen")
+            return None
+        concept["render"] = info
+        self.db.update_video(video_id, script=concept, path=str(path), status="produced")
+        if info["problems"]:
+            act("jarvis", f"Video #{video_id} fällt durch die Prüfung: {', '.join(info['problems'])}")
+            self.db.update_video(video_id, status="rejected")
+            return None
+        act("jarvis", f"Video #{video_id} geprüft: {info['duration']:.0f} s, Höhepunkt bei {info['climax_at']} s – ok")
+        return self._after_production(video_id, concept, verdict, publish)
+
+    def _after_production(self, video_id: int, script: dict, verdict: dict, publish: bool | None) -> int:
+        auto = self.cfg["boss"].get("auto_publish", True) if publish is None else publish
+        if auto:
+            self.publish(video_id)
+        elif publish is False:
+            self.db.update_video(video_id, status="awaiting_approval")
+        else:
+            self.db.update_video(video_id, status="awaiting_approval")
+            self.notifier.notify(
+                "approval",
+                f"Neues Video #{video_id}: \"{script['title']}\" (Score {verdict['score']:.0f}/10). "
+                f"Antworte OK {video_id} zum Hochladen oder NEIN {video_id}.",
+            )
+        return video_id
+
     def create_video(self, idea: dict, insights: dict, learnings: list[str],
                      publish: bool | None = None) -> int | None:
+        if self.style == "animation":
+            return self.create_animation(idea, insights, learnings, publish)
         bcfg = self.cfg["boss"]
         act = self.db.set_activity
         brief = idea["idea"] + (f"\nAnweisung vom Chef: {idea['instructions']}" if idea.get("instructions") else "")
@@ -152,19 +266,7 @@ class Boss:
             log.exception("Videoproduktion fehlgeschlagen")
             return None
         self.db.update_video(video_id, path=str(path), status="produced")
-        auto = bcfg.get("auto_publish", True) if publish is None else publish
-        if auto:
-            self.publish(video_id)
-        elif publish is False:
-            self.db.update_video(video_id, status="awaiting_approval")
-        else:
-            self.db.update_video(video_id, status="awaiting_approval")
-            self.notifier.notify(
-                "approval",
-                f"Neues Video #{video_id}: \"{script['title']}\" (Score {verdict['score']:.0f}/10). "
-                f"Antworte OK {video_id} zum Hochladen oder NEIN {video_id}.",
-            )
-        return video_id
+        return self._after_production(video_id, script, verdict, publish)
 
     def publish(self, video_id: int, only: list[str] | None = None) -> None:
         video = self.db.video(video_id)
@@ -194,17 +296,23 @@ class Boss:
         while len(created) < count and attempts < count * 2:
             niche = niches[attempts % len(niches)]
             attempts += 1
+            kind = type_for(niche) if self.style == "animation" else None
+            topic = TYPES[kind]["query"] if kind else niche
             act = self.db.set_activity
-            act("jarvis", f"Serie: Video {len(created) + 1} von {count} – Nische „{niche}“")
+            act("jarvis", f"Serie: Video {len(created) + 1} von {count} – „{niche}“")
             try:
-                if niche not in insights_cache:
-                    act("scout", f"analysiert, was in „{niche}“ viral geht")
-                    insights_cache[niche] = self.scout.run(niche)
+                if topic not in insights_cache:
+                    act("scout", f"analysiert, was bei „{niche}“ viral geht")
+                    insights_cache[topic] = self.scout.run(topic)
                     act("scout", f"fertig mit „{niche}“")
-                plan = self.plan(insights_cache[niche], learnings, instructions, 1, niche=niche)
+                plan = self.plan(insights_cache[topic], learnings, instructions, 1, niche=niche)
+                if not plan["ideas"] and kind:  # Plan leer? Dann entscheidet der Designer allein
+                    plan["ideas"] = [{"idea": TYPES[kind]["idee"], "type": kind}]
                 for idea in plan["ideas"]:
+                    if kind:
+                        idea["type"] = kind
                     idea["idea"] = f"[{niche}] {idea['idea']}"
-                    vid = self.create_video(idea, insights_cache[niche], learnings, publish=False)
+                    vid = self.create_video(idea, insights_cache[topic], learnings, publish=False)
                     if vid:
                         created.append(vid)
             except Exception as exc:  # noqa: BLE001
@@ -265,13 +373,21 @@ class Boss:
         act("jarvis", "wertet die Zahlen aus und lernt daraus")
         self.learn()
 
-        act("scout", f"sucht Trends zu „{self.cfg['niche']}“")
-        insights = self.scout.run(self.cfg["niche"])
+        kind = self.next_animation_type() if self.style == "animation" else None
+        topic = TYPES[kind]["query"] if kind else self.cfg["niche"]
+        act("scout", f"sucht Trends zu „{TYPES[kind]['label'] if kind else topic}“")
+        insights = self.scout.run(topic)
         act("scout", f"fertig – {insights.get('sample_size', 0)} Videos analysiert")
         act("jarvis", "plant die nächsten Videos")
         self.report_errors([PlatformError(e, blocked=True) for e in insights.get("_blocked", [])], "Trend-Analyse")
         learnings = self.db.notes("learning", 10)
-        plan = self.plan(insights, learnings, instructions, int(self.cfg["boss"]["videos_per_cycle"]))
+        plan = self.plan(insights, learnings, instructions, int(self.cfg["boss"]["videos_per_cycle"]),
+                         niche=TYPES[kind]["label"] if kind else None)
+        if kind:
+            recent_kinds = [v["script"].get("type") for v in self.db.videos(limit=2)]
+            for idea in plan["ideas"]:
+                if idea.get("type") not in TYPES or idea.get("type") in recent_kinds:
+                    idea["type"] = kind  # Abwechslung statt fünfmal dasselbe
         question = plan.get("question_for_owner")
         question = question.strip() if isinstance(question, str) else ""
         if len(question) > 3:

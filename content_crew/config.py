@@ -29,6 +29,7 @@ DEFAULTS: dict[str, Any] = {
         "tunnel": "auto",
     },
     "video": {
+        "style": "animation",  # animation = animierte Clips mit Musik; slides = alte Text-Videos
         "width": 1080,
         "height": 1920,
         "fps": 30,
@@ -37,6 +38,7 @@ DEFAULTS: dict[str, Any] = {
         "font": "",
         "background_dir": "",
     },
+    "animation": {"fps": 60, "bloom": 0.6, "crf": 18, "preset": "medium"},
     "data_dir": "./data",
     "dry_run": False,
 }

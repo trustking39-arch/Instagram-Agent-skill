@@ -9,11 +9,11 @@ Instagram Reels und TikTok machen – und er meldet sich per **SMS oder Anruf** 
                     │  SMS / Anruf  ▲          │ SMS / Sprache: STOP, STATUS, OK 12, Anweisungen
                     │               │          ▼
                     │        ┌─────────────────────┐
-                    │        │  JARVIS (Chef)       │  plant Themen, bewertet Skripte (1-10),
+                    │        │  JARVIS (Chef)       │  plant Videos, bewertet Konzepte (1-10),
                     │        │                      │  schickt schlechte Arbeit zurück, lernt aus Zahlen
                     │        └──┬────┬────┬────┬───┘
-                    │   Trend-  │Skript│Video-│Uploader│Analyst
-                    │   Scout   │Autor │Produz│        │(viral?)
+                    │   Trend-  │Desig-│Anima-│Uploader│Analyst
+                    │   Scout   │ner   │tor   │        │(viral?)
                     └───────────┴──────┴──────┴────────┴─────────
                        YouTube · Instagram · TikTok (offizielle APIs)
 ```
@@ -23,11 +23,29 @@ Instagram Reels und TikTok machen – und er meldet sich per **SMS oder Anruf** 
 | Arbeiter | Aufgabe |
 |---|---|
 | **Trend-Scout** | Sucht die erfolgreichsten Kurzvideos der letzten 7 Tage in deiner Nische (YouTube) und Top-Posts zum Hashtag (Instagram) und analysiert Hooks, Themen, Formate. |
-| **Skript-Autor** | Schreibt das Skript (Hook, Szenen, Caption, Hashtags). Muss nachbessern, bis Jarvis mindestens die Mindestnote gibt. |
-| **Video-Produzent** | Baut ein 1080×1920-Video: Sprachausgabe (Microsoft-Edge-Stimme), große Untertitel, passende Hintergrundvideos von Pexels (lizenzfrei), alternativ deine eigenen Clips/Bilder. |
+| **Designer** | Entwirft das Konzept: Animationsart, Einstellungen, Farben, Melodie, Länge, Caption mit Frage, Hashtags. Muss nachbessern, bis Jarvis mindestens die Mindestnote gibt. |
+| **Animator** | Rendert ein echtes animiertes Video (1080×1920, 60 fps, mit Musik) – **keine Sätze, keine Fotos**. Physik-Simulationen und „Satisfying“-Clips, siehe unten. Prüft danach Länge, Bewegung, Helligkeit und Ton. |
 | **Uploader** | Lädt auf alle eingerichteten Plattformen hoch. |
 | **Analyst** | Holt regelmäßig Aufrufe, Likes, Kommentare, Shares. Erkennt virale Videos (z. B. 3× dein Median und mind. 10.000 Aufrufe). |
 | **Jarvis (Chef)** | Plant jede Runde neue Videos, bewertet streng, lernt aus den echten Zahlen („Fragen als Hook funktionieren“), richtet sich nach deinen Anweisungen. |
+
+### Die Animationsarten
+
+| Art | Was passiert | Spannung |
+|---|---|---|
+| **Ring-Flucht** (`ring_escape`) | Ball springt in bis zu 50 rotierenden Ringen mit Lücke, jede Lücke sprengt einen Ring | Zahl zählt die Ringe herunter |
+| **Ball-Vermehrung** (`escape_multiply`) | Jeder entkommene Ball wird zu zwei neuen – bis der Ring platzt | Zahl zählt die Bälle hoch |
+| **Wachsender Ball** (`growing_ball`) | Ball wird bei jedem Aufprall größer und malt ein Muster | Wann ist der Kreis voll? |
+| **Farben-Krieg** (`color_wars`) | 2 oder 4 Teams erobern Felder (Pong-Wars-Prinzip) | Wer hat am Ende die meiste Fläche? |
+| **Polyrhythmus** (`polyrhythm`) | Punkte auf Bögen, Welle oder Umlaufbahnen, jeder mit eigenem Ton | Countdown, bis sich alle treffen |
+
+Jeder Aufprall spielt einen Ton – auf Wunsch Note für Note eine **gemeinfreie Melodie** (Für Elise, Ode an die
+Freude, Bergkönig, Kanon in D, Jingle Bells, Stille Nacht …), damit TikTok den Ton nicht sperrt. Der Höhepunkt wird
+automatisch auf die gewünschte Länge abgestimmt (die Physik wird vorab durchgerechnet). Selbst ausprobieren ohne KI:
+
+```bash
+content-crew animate --type ring_escape --music fur_elise --palette neon --duration 35
+```
 
 ### Wann Jarvis dich kontaktiert
 
@@ -58,7 +76,8 @@ Nur deine eigene Nummer (`OWNER_PHONE_NUMBER`) wird akzeptiert, Twilio-Anfragen 
 - **TikTok:** Bis TikTok deine App geprüft hat („Audit“, dauert einige Tage bis Wochen), sind hochgeladene Videos **nur für dich sichtbar**. TikTok bietet keine Trend-Suche an; Trends kommen von YouTube/Instagram.
 - **YouTube:** Neue Google-Cloud-Projekte laden Videos zunächst als **privat** hoch, bis die API-Prüfung („Audit“) bestanden ist. Das API-Kontingent reicht für etwa 6 Uploads pro Tag.
 - **Instagram:** Nur mit **Business- oder Creator-Konto**, das mit einer Facebook-Seite verbunden ist. Instagram holt das Video von einer **öffentlichen URL** – den nötigen Tunnel startet Content Crew automatisch.
-- **Qualität:** Die Videos sind Text-und-Stimme-Shorts. Mit Pexels-Key bekommt jede Szene ein passendes Stockvideo; eigene Clips in `video.background_dir` machen sie noch persönlicher. Ein lokales Modell ist schwächer als große Cloud-Modelle – nimm mindestens `qwen3.5:9b`, mit Grafikkarte gern größer.
+- **Qualität:** Die Animationen rechnet der Animator selbst – ohne Internet, ohne Grafikkarte, ohne Kosten. Echte KI-Videogeneratoren (fotorealistische Clips aus Text) brauchen eine starke Grafikkarte oder einen kostenpflichtigen Dienst und sind hier nicht eingebaut. Das Sprachmodell plant und bewertet nur – nimm mindestens `qwen3.5:9b`, mit Grafikkarte gern größer.
+- **Alte Text-Videos** gibt es weiter mit `video.style: slides` in `config.yaml`.
 - **Viral garantiert niemand.** Das System testet, misst und lernt – Erfolg braucht trotzdem Zeit.
 - Der PC muss laufen, damit das Team arbeitet.
 
@@ -121,7 +140,7 @@ Beim Start passiert automatisch:
 - ein Cloudflare-Tunnel gibt deinem PC eine öffentliche Adresse (für Instagram-Uploads und deine SMS-Antworten)
 - diese Adresse wird automatisch bei deiner Twilio-Nummer als SMS-Webhook eingetragen
 - du bekommst eine SMS „Jarvis ist gestartet“
-- alle 4 Stunden läuft eine Runde: Zahlen prüfen → lernen → Trends → planen → Skript → Video → Upload
+- alle 4 Stunden läuft eine Runde: Zahlen prüfen → lernen → Trends → planen → Konzept → Animation → Upload
 
 Weitere Befehle: `content-crew status` (Übersicht im Terminal), `content-crew publish 12` (Video 12 sofort hochladen).
 
@@ -158,11 +177,12 @@ Programm `wsl.exe`, Argumente `-d Ubuntu-24.04 -- true`. Energieoptionen: Ruhezu
 |---|---|
 | `niche` | Dein Themengebiet |
 | `boss.videos_per_cycle`, `boss.cycle_minutes` | Wie viele Videos wie oft |
-| `boss.min_script_score` | Mindestnote, sonst muss der Autor nachbessern |
+| `boss.min_script_score` | Mindestnote, sonst muss der Designer nachbessern |
+| `video.style` | `animation` (Standard) oder `slides` (alte Text-Videos) |
+| `animation.fps`, `animation.preset` | 60 Bilder/s; `veryfast` rendert schneller, `medium` gibt kleinere Dateien |
 | `boss.auto_publish` | `false` = Jarvis fragt dich vor jedem Upload per SMS |
 | `virality.*` | Ab wann ein Video als viral gilt (dann ruft Jarvis an) |
-| `video.background_dir` | Ordner mit eigenen Clips/Bildern als Hintergrund |
-| `video.voice` | Stimme, z. B. `de-DE-ConradNeural` (männlich) |
+| `video.background_dir`, `video.voice` | nur für `slides`: eigene Hintergründe, Stimme |
 
 ## Sicherheit
 

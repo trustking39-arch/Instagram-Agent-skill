@@ -18,7 +18,7 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
     brew install ffmpeg cloudflared git
 else
     sudo apt-get update -q
-    sudo apt-get install -y -q ffmpeg git curl
+    sudo apt-get install -y -q ffmpeg git curl libegl1  # libegl1 braucht die Grafik-Engine (Skia)
     if ! command -v cloudflared >/dev/null; then
         arch="$(dpkg --print-architecture)"
         curl -fsSL -o /tmp/cloudflared.deb \
