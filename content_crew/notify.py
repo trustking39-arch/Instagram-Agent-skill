@@ -78,6 +78,22 @@ class Notifier:
         self.db.add_outbox(kind, "call", text, sent)
         return sent
 
+    def configure_webhook(self, base_url: str) -> bool:
+        """SMS-Webhook der Twilio-Nummer automatisch auf <base_url>/sms setzen."""
+        if not self.configured or not base_url:
+            return False
+        try:
+            numbers = self._twilio().incoming_phone_numbers.list(phone_number=self.from_number, limit=1)
+            if not numbers:
+                log.error("Twilio-Nummer %s nicht im Konto gefunden", self.from_number)
+                return False
+            numbers[0].update(sms_url=f"{base_url.rstrip('/')}/sms", sms_method="POST")
+            log.info("Twilio leitet SMS-Antworten jetzt an %s/sms", base_url.rstrip("/"))
+            return True
+        except Exception:  # noqa: BLE001
+            log.exception("Twilio-Webhook konnte nicht gesetzt werden")
+            return False
+
     def notify(self, kind: str, text: str, ask: bool = False) -> None:
         """Je nach Ereignis-Art anrufen und/oder SMS schicken (siehe config notify)."""
         ncfg = self.cfg["notify"]

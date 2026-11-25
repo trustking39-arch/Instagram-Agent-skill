@@ -26,6 +26,7 @@ DEFAULTS: dict[str, Any] = {
         "call_on": ["viral", "blocked"],
         "sms_on": ["question", "published", "error", "approval", "report"],
         "public_base_url": "",
+        "tunnel": "auto",
     },
     "video": {
         "width": 1080,
@@ -73,7 +74,7 @@ def load_config(path: str | Path = "config.yaml") -> Config:
     try:
         from dotenv import load_dotenv
 
-        load_dotenv()
+        load_dotenv(Path(".env"))
     except ImportError:  # pragma: no cover
         pass
     data: dict = {}

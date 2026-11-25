@@ -30,9 +30,8 @@ class TikTok(Platform):
         return self.cfg.data_dir / "tiktok_token.txt"
 
     def _token(self) -> str:
-        if self._token_cache.exists():
-            return self._token_cache.read_text().strip()
-        return self.cfg.env("TIKTOK_ACCESS_TOKEN")
+        return self.cfg.env("TIKTOK_ACCESS_TOKEN") or (
+            self._token_cache.read_text().strip() if self._token_cache.exists() else "")
 
     def refresh(self) -> None:
         refresh = self.cfg.env("TIKTOK_REFRESH_TOKEN")
@@ -48,6 +47,10 @@ class TikTok(Platform):
         if "access_token" not in data:
             raise PlatformError(f"TikTok-Token konnte nicht erneuert werden: {data}", blocked=True)
         self._token_cache.write_text(data["access_token"])
+        from content_crew.envfile import set_env_values
+
+        set_env_values({"TIKTOK_ACCESS_TOKEN": data["access_token"],
+                        "TIKTOK_REFRESH_TOKEN": data.get("refresh_token", refresh)})
 
     def _post(self, path: str, body: dict, params: dict | None = None, retry: bool = True) -> dict:
         resp = requests.post(

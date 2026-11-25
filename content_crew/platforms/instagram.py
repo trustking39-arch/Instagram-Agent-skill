@@ -26,9 +26,14 @@ class Instagram(Platform):
 
     def missing(self) -> list[str]:
         out = [n for n in ("INSTAGRAM_USER_ID", "INSTAGRAM_ACCESS_TOKEN") if not self.cfg.env(n)]
+        if out:
+            return ["Instagram-Login (content-crew auth-instagram)"]
         if not self.cfg["notify"].get("public_base_url"):
-            out.append("notify.public_base_url (öffentliche URL für Video-Upload)")
-        return out
+            from content_crew.tunnel import Tunnel
+
+            if not (Tunnel.available() and self.cfg["notify"].get("tunnel", "auto") != "off"):
+                return ["öffentliche Adresse (cloudflared installieren)"]
+        return []
 
     def _req(self, method: str, path: str, **params) -> dict:
         params["access_token"] = self.token

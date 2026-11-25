@@ -26,13 +26,13 @@ class Publisher:
         description = script.get("caption", "")
         tags = script.get("hashtags", [])
         for name, platform in self.platforms.items():
-            missing = platform.missing()
-            if missing:
-                errors.append(PlatformError(f"{name} nicht eingerichtet: {', '.join(missing)}"))
-                continue
             if self.cfg.dry_run:
                 ids[name] = f"dryrun-{video.stem}"
                 log.info("[Testmodus] %s würde hochgeladen auf %s", video.name, name)
+                continue
+            missing = platform.missing()
+            if missing:
+                errors.append(PlatformError(f"{name} nicht eingerichtet: {', '.join(missing)}"))
                 continue
             try:
                 ids[name] = platform.upload(video, script["title"], description, tags, self.public_url(video))

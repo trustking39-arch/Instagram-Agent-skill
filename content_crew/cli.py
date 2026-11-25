@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import getpass
 import json
 import logging
 import shutil
@@ -57,7 +58,15 @@ def cmd_doctor(args) -> None:
     print(f"{ok(shutil.which('ffmpeg'))}ffmpeg")
     n = Notifier(cfg, db)
     print(f"{ok(n.configured)}Twilio (SMS/Anrufe)" + ("" if n.configured else " – TWILIO_* / OWNER_PHONE_NUMBER fehlen"))
-    print(f"{ok(cfg['notify'].get('public_base_url'))}Öffentliche URL (Rückantworten per SMS/Sprache, Instagram)")
+    from content_crew.tunnel import Tunnel
+
+    public = cfg["notify"].get("public_base_url") or (Tunnel.available() and cfg["notify"].get("tunnel") != "off")
+    print(f"{ok(public)}Öffentliche Adresse" + (
+        "" if cfg["notify"].get("public_base_url") else
+        (" – wird bei 'content-crew run' automatisch per cloudflared erstellt" if public
+         else " – cloudflared installieren (scripts/install_pc.sh)")))
+    print(f"{ok(cfg.env('PEXELS_API_KEY'))}Pexels (Hintergrundvideos)"
+          + ("" if cfg.env("PEXELS_API_KEY") else " – ohne Key nur farbige Hintergründe"))
     for name, p in load_platforms(cfg).items():
         missing = p.missing()
         print(f"{ok(not missing)}{name}" + (f" – fehlt: {', '.join(missing)}" if missing else ""))
@@ -66,18 +75,76 @@ def cmd_doctor(args) -> None:
 
 def cmd_cycle(args) -> None:
     cfg, db = _setup(args)
-    created = _boss(cfg, db).run_cycle()
+    boss = _boss(cfg, db)
+    tunnel = _start_services(cfg, db, boss, 8787)
+    try:
+        created = boss.run_cycle()
+    finally:
+        if tunnel:
+            tunnel.stop()
     print(f"Fertig. Neue Videos: {created or 'keine'}")
     for vid in created:
         v = db.video(vid)
         print(f"  #{vid} [{v['status']}] {v['script']['title']} -> {v['path']}")
 
 
+def _start_services(cfg: Config, db: DB, boss, port: int):
+    """Webhook-/Medien-Server starten und – falls nötig – den öffentlichen Tunnel."""
+    threading.Thread(target=_serve, args=(cfg, db, port), daemon=True).start()
+    if cfg.dry_run or cfg["notify"].get("public_base_url") or cfg["notify"].get("tunnel", "auto") == "off":
+        return None
+    from content_crew.tunnel import Tunnel
+
+    tunnel = Tunnel(port)
+    url = tunnel.start()
+    if url:
+        cfg["notify"]["public_base_url"] = url
+        boss.notifier.configure_webhook(url)
+    return tunnel
+
+
 def cmd_run(args) -> None:
     cfg, db = _setup(args)
-    if not args.no_server:
-        threading.Thread(target=_serve, args=(cfg, db, args.port), daemon=True).start()
-    _boss(cfg, db).run_forever()
+    boss = _boss(cfg, db)
+    tunnel = None if args.no_server else _start_services(cfg, db, boss, args.port)
+    boss.notifier.sms("Jarvis ist gestartet und arbeitet. Schreib STATUS für eine Übersicht.", "start")
+    try:
+        boss.run_forever()
+    finally:
+        if tunnel:
+            tunnel.stop()
+
+
+def cmd_setup(args) -> None:
+    from content_crew.wizard import run_wizard
+
+    run_wizard()
+
+
+def cmd_auth_instagram(args) -> None:
+    load_config(args.config)
+    from content_crew.auth import instagram_setup
+
+    print("1. Öffne developers.facebook.com/tools/explorer, wähle deine App,")
+    print("2. füge die Berechtigungen instagram_basic, instagram_content_publish, instagram_manage_insights,")
+    print("   pages_show_list, pages_read_engagement, business_management hinzu,")
+    print("3. klicke 'Generate Access Token' und kopiere den Token.\n")
+    token = args.token or getpass.getpass("Token einfügen: ").strip()
+    info = instagram_setup(token, Config.env("META_APP_ID"), Config.env("META_APP_SECRET"))
+    print(f"Instagram verbunden: @{info['username']} (Seite: {info['page']}). Token gespeichert, läuft nicht ab.")
+
+
+def cmd_auth_tiktok(args) -> None:
+    load_config(args.config)
+    from content_crew.auth import tiktok_login
+
+    key, secret = Config.env("TIKTOK_CLIENT_KEY"), Config.env("TIKTOK_CLIENT_SECRET")
+    if not (key and secret):
+        sys.exit("TIKTOK_CLIENT_KEY und TIKTOK_CLIENT_SECRET fehlen – erst content-crew setup ausführen.")
+    redirect = Config.env("TIKTOK_REDIRECT_URI", "http://localhost:8788/callback/")
+    print(f"Wichtig: '{redirect}' muss in deiner TikTok-App unter Login Kit → Redirect URI eingetragen sein.\n")
+    tiktok_login(key, secret, redirect)
+    print("TikTok verbunden. Tokens gespeichert und werden automatisch erneuert.")
 
 
 def _serve(cfg: Config, db: DB, port: int) -> None:
@@ -126,7 +193,13 @@ def cmd_auth_youtube(args) -> None:
 
 def cmd_publish(args) -> None:
     cfg, db = _setup(args)
-    _boss(cfg, db).publish(args.video_id)
+    boss = _boss(cfg, db)
+    tunnel = _start_services(cfg, db, boss, 8787)
+    try:
+        boss.publish(args.video_id)
+    finally:
+        if tunnel:
+            tunnel.stop()
     print(json.dumps(db.video(args.video_id)["platform_ids"]))
 
 
@@ -157,7 +230,12 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("text", nargs="?")
     p.add_argument("--ask", action="store_true", help="nach Antwort per Sprache fragen")
     p.set_defaults(func=cmd_call)
+    sub.add_parser("setup", help="Einrichtungs-Assistent").set_defaults(func=cmd_setup)
     sub.add_parser("auth-youtube", help="einmalig bei YouTube anmelden").set_defaults(func=cmd_auth_youtube)
+    p = sub.add_parser("auth-instagram", help="Instagram verbinden")
+    p.add_argument("--token", help="Token aus dem Graph API Explorer")
+    p.set_defaults(func=cmd_auth_instagram)
+    sub.add_parser("auth-tiktok", help="einmalig bei TikTok anmelden").set_defaults(func=cmd_auth_tiktok)
     p = sub.add_parser("publish", help="ein bestimmtes Video hochladen")
     p.add_argument("video_id", type=int)
     p.set_defaults(func=cmd_publish)

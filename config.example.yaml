@@ -23,7 +23,8 @@ virality:
 notify:
   call_on: [viral, blocked]                    # bei diesen Ereignissen ruft Jarvis an
   sms_on: [question, published, error, approval, report]
-  public_base_url: ""                          # öffentliche URL deines PCs (Tunnel), für Rückantworten & Instagram
+  public_base_url: ""                          # leer = wird automatisch per cloudflared-Tunnel erzeugt
+  tunnel: auto                                 # auto | off
 
 video:
   width: 1080

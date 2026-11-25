@@ -14,9 +14,13 @@ SYSTEM = (
 )
 
 FORMAT = (
-    '{"title": "max 70 Zeichen", "hook": "erster Satz", '
-    '"scenes": [{"text": "gesprochener Text = Untertitel"}], '
-    '"caption": "Beschreibung für den Post", "hashtags": ["#tag1", "#tag2"]}'
+    "Regeln: title höchstens 70 Zeichen; 3 bis 8 scenes; text = gesprochener Satz (zugleich Untertitel); "
+    "visual = 2-3 englische Suchbegriffe für ein passendes Stockvideo; 5-10 hashtags.\n"
+    "Beispiel für die Struktur (Inhalt NICHT übernehmen):\n"
+    '{"title": "Warum du morgens müde bist", "hook": "Du machst morgens diesen einen Fehler.", '
+    '"scenes": [{"text": "Du machst morgens diesen einen Fehler.", "visual": "tired man alarm clock"}, '
+    '{"text": "Folge mir für mehr.", "visual": "sunrise city"}], '
+    '"caption": "Kurze Beschreibung mit Frage an die Zuschauer", "hashtags": ["#morgenroutine", "#motivation"]}'
 )
 
 
@@ -24,8 +28,9 @@ def normalize_script(script: dict) -> dict:
     scenes = []
     for s in script.get("scenes") or []:
         text = s.get("text") if isinstance(s, dict) else str(s)
+        visual = str(s.get("visual") or "").strip() if isinstance(s, dict) else ""
         if text and text.strip():
-            scenes.append({"text": text.strip()})
+            scenes.append({"text": text.strip(), "visual": visual} if visual else {"text": text.strip()})
     if not scenes and script.get("hook"):
         scenes = [{"text": script["hook"]}]
     tags = [t if str(t).startswith("#") else f"#{t}" for t in (script.get("hashtags") or [])][:15]

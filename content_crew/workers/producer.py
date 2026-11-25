@@ -55,6 +55,9 @@ class VideoProducer:
         self.v = cfg["video"]
         if not shutil.which("ffmpeg"):
             raise RuntimeError("ffmpeg ist nicht installiert")
+        from content_crew.workers.stock import StockFootage
+
+        self.stock = StockFootage(cfg.env("PEXELS_API_KEY"), cfg.data_dir / "stock")
 
     @property
     def out_dir(self) -> Path:
@@ -94,14 +97,14 @@ class VideoProducer:
         return None
 
     # --- Szenen --------------------------------------------------------
-    def _scene(self, idx: int, text: str, work: Path, backgrounds: list[Path]) -> Path:
+    def _scene(self, idx: int, text: str, work: Path, backgrounds: list[Path], visual: str = "") -> Path:
         w, h, fps = int(self.v["width"]), int(self.v["height"]), int(self.v["fps"])
         audio = self.tts(text, work / f"a{idx}")
         dur = _duration(audio) + 0.35 if audio else max(2.0, len(text.split()) / 2.6)
         (work / f"t{idx}.txt").write_text(textwrap.fill(text, width=20), encoding="utf-8")
 
         cmd = ["ffmpeg", "-y", "-loglevel", "error"]
-        bg = random.choice(backgrounds) if backgrounds else None
+        bg = self.stock.find(visual) or (random.choice(backgrounds) if backgrounds else None)
         if bg and bg.suffix.lower() in VIDEO_EXT:
             cmd += ["-stream_loop", "-1", "-i", str(bg)]
         elif bg:
@@ -136,7 +139,8 @@ class VideoProducer:
         target = self.out_dir / f"video_{video_id}.mp4"
         with tempfile.TemporaryDirectory(prefix="crew_") as tmp:
             work = Path(tmp)
-            parts = [self._scene(i, s["text"], work, backgrounds) for i, s in enumerate(script["scenes"])]
+            parts = [self._scene(i, s["text"], work, backgrounds, s.get("visual", ""))
+                     for i, s in enumerate(script["scenes"])]
             (work / "list.txt").write_text("".join(f"file '{p.name}'\n" for p in parts), encoding="utf-8")
             _run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", "list.txt",
                   "-c", "copy", "-movflags", "+faststart", str(target.resolve())], cwd=work)

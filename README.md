@@ -24,7 +24,7 @@ Instagram Reels und TikTok machen – und er meldet sich per **SMS oder Anruf** 
 |---|---|
 | **Trend-Scout** | Sucht die erfolgreichsten Kurzvideos der letzten 7 Tage in deiner Nische (YouTube) und Top-Posts zum Hashtag (Instagram) und analysiert Hooks, Themen, Formate. |
 | **Skript-Autor** | Schreibt das Skript (Hook, Szenen, Caption, Hashtags). Muss nachbessern, bis Jarvis mindestens die Mindestnote gibt. |
-| **Video-Produzent** | Baut ein 1080×1920-Video: Sprachausgabe (Microsoft-Edge-Stimme), große Untertitel, Hintergründe (Farben oder deine eigenen Clips/Bilder). |
+| **Video-Produzent** | Baut ein 1080×1920-Video: Sprachausgabe (Microsoft-Edge-Stimme), große Untertitel, passende Hintergrundvideos von Pexels (lizenzfrei), alternativ deine eigenen Clips/Bilder. |
 | **Uploader** | Lädt auf alle eingerichteten Plattformen hoch. |
 | **Analyst** | Holt regelmäßig Aufrufe, Likes, Kommentare, Shares. Erkennt virale Videos (z. B. 3× dein Median und mind. 10.000 Aufrufe). |
 | **Jarvis (Chef)** | Plant jede Runde neue Videos, bewertet streng, lernt aus den echten Zahlen („Fragen als Hook funktionieren“), richtet sich nach deinen Anweisungen. |
@@ -57,8 +57,8 @@ Nur deine eigene Nummer (`OWNER_PHONE_NUMBER`) wird akzeptiert, Twilio-Anfragen 
 - **Nur offizielle APIs.** Kein Scraping, keine Bots, die sich als Mensch ausgeben – sonst werden Konten gesperrt.
 - **TikTok:** Bis TikTok deine App geprüft hat („Audit“, dauert einige Tage bis Wochen), sind hochgeladene Videos **nur für dich sichtbar**. TikTok bietet keine Trend-Suche an; Trends kommen von YouTube/Instagram.
 - **YouTube:** Neue Google-Cloud-Projekte laden Videos zunächst als **privat** hoch, bis die API-Prüfung („Audit“) bestanden ist. Das API-Kontingent reicht für etwa 6 Uploads pro Tag.
-- **Instagram:** Nur mit **Business- oder Creator-Konto**, das mit einer Facebook-Seite verbunden ist. Instagram holt das Video von einer **öffentlichen URL** – dafür braucht dein PC einen Tunnel (siehe unten).
-- **Qualität:** Die Videos sind Text-und-Stimme-Shorts. Mit eigenen Clips/Bildern in `video.background_dir` werden sie deutlich besser. Ein lokales Modell ist schwächer als große Cloud-Modelle – nimm mindestens `qwen3.5:9b`, mit Grafikkarte gern größer.
+- **Instagram:** Nur mit **Business- oder Creator-Konto**, das mit einer Facebook-Seite verbunden ist. Instagram holt das Video von einer **öffentlichen URL** – den nötigen Tunnel startet Content Crew automatisch.
+- **Qualität:** Die Videos sind Text-und-Stimme-Shorts. Mit Pexels-Key bekommt jede Szene ein passendes Stockvideo; eigene Clips in `video.background_dir` machen sie noch persönlicher. Ein lokales Modell ist schwächer als große Cloud-Modelle – nimm mindestens `qwen3.5:9b`, mit Grafikkarte gern größer.
 - **Viral garantiert niemand.** Das System testet, misst und lernt – Erfolg braucht trotzdem Zeit.
 - Der PC muss laufen, damit das Team arbeitet.
 
@@ -66,75 +66,79 @@ Nur deine eigene Nummer (`OWNER_PHONE_NUMBER`) wird akzeptiert, Twilio-Anfragen 
 
 ## Installation auf deinem PC
 
-**Windows:** OpenJarvis läuft nur unter **WSL2**. Einmalig in PowerShell (als Administrator):
+**Windows:** Jarvis läuft unter **WSL2**. Einmalig in PowerShell (als Administrator):
 ```powershell
 wsl --install -d Ubuntu-24.04
 ```
-Danach alles Weitere im Ubuntu-Fenster. **macOS/Linux:** direkt im Terminal.
+PC neu starten, „Ubuntu“ aus dem Startmenü öffnen, Benutzername und Passwort festlegen. Alles Weitere im Ubuntu-Fenster.
+**macOS/Linux:** direkt im Terminal.
 
-### 1. Jarvis installieren und starten
+### 1. Alles installieren (ein Befehl)
 ```bash
-curl -fsSL https://open-jarvis.github.io/OpenJarvis/install.sh | bash
-source ~/.bashrc
-cd ~/.openjarvis/src && uv pip install --python ~/.openjarvis/.venv/bin/python -e ".[server]" && cd ~
-ollama pull qwen3.5:9b
-jarvis start
-```
-
-### 2. Dieses Projekt installieren
-```bash
-sudo apt install -y ffmpeg git          # macOS: brew install ffmpeg
-git clone https://github.com/trustking39-arch/Instagram-Agent-skill.git
+git clone -b claude/lucid-mendel-ht9zp8 https://github.com/trustking39-arch/Instagram-Agent-skill.git
 cd Instagram-Agent-skill
-uv venv && uv pip install -e ".[all]"
+bash scripts/install_pc.sh
+```
+Das installiert ffmpeg, cloudflared (Tunnel), uv, Jarvis (OpenJarvis + Ollama), das KI-Modell `qwen3.5:9b`
+und dieses Projekt. Kleinerer PC ohne Grafikkarte? `MODEL=qwen3.5:4b bash scripts/install_pc.sh`
+
+### 2. Konten anlegen (einmalig, einige Schritte musst du selbst machen)
+
+| Dienst | Was du brauchst | Kosten |
+|---|---|---|
+| **Twilio** (twilio.com) | Konto + Telefonnummer mit Voice & SMS. *Account SID*, *Auth Token*. Im Testkonto deine Handynummer unter „Verified Caller IDs“ bestätigen. | ca. 1–2 €/Monat + Cent pro SMS/Minute |
+| **Pexels** (pexels.com/api) | Kostenloser API-Key für Hintergrundvideos | kostenlos |
+| **YouTube** (console.cloud.google.com) | Projekt → *YouTube Data API v3* aktivieren → **API-Schlüssel**. *OAuth-Zustimmungsbildschirm* (Extern, dich als Testnutzer) → *OAuth-Client-ID* Typ **Desktop-App** → JSON als `secrets/youtube_client_secret.json` speichern | kostenlos |
+| **Instagram** (developers.facebook.com) | Instagram als **Business-/Creator-Konto**, verbunden mit einer **Facebook-Seite**. App vom Typ „Business“ anlegen → *App-ID* und *App-Geheimcode* | kostenlos |
+| **TikTok** (developers.tiktok.com) | App anlegen, Produkte **Login Kit** und **Content Posting API** (Direct Post), Scopes `user.info.basic`, `video.publish`, `video.list`. Redirect-URI: `http://localhost:8788/callback/`. *Client Key*, *Client Secret*. App zur Prüfung einreichen. | kostenlos |
+
+### 3. Zugänge eintragen (Assistent)
+```bash
 source .venv/bin/activate
-content-crew init                       # legt config.yaml und .env an
+content-crew setup            # fragt Nische, Twilio, Pexels, YouTube, Meta, TikTok ab
+content-crew auth-youtube     # Browser-Login bei YouTube
+content-crew auth-instagram   # Token aus dem Graph API Explorer einfügen – ID wird automatisch gefunden,
+                              # der gespeicherte Token läuft nicht ab
+content-crew auth-tiktok      # Browser-Login bei TikTok, Token wird automatisch erneuert
+content-crew doctor           # zeigt, was noch fehlt
 ```
-Trag in `config.yaml` deine **Nische** ein (z. B. „Fitness für Anfänger“).
+Du musst nichts von Hand in Dateien eintragen. Plattformen, die du (noch) nicht einrichtest, werden einfach übersprungen.
 
-### 3. Zugänge einrichten (in `.env` eintragen)
-
-**Twilio – SMS und Anrufe** (ca. 1–2 €/Monat pro Nummer plus Cent-Beträge pro SMS/Minute)
-1. Konto auf twilio.com anlegen, Telefonnummer mit **Voice + SMS** kaufen.
-2. In der Twilio-Konsole: *Account SID* und *Auth Token* kopieren → `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`.
-3. Deine Handynummer → `OWNER_PHONE_NUMBER` (Format `+49170…`). Im Testkonto muss sie als „Verified Caller ID“ bestätigt sein.
-4. Test: `content-crew test-sms` und `content-crew test-call`
-
-**YouTube**
-1. console.cloud.google.com → Projekt anlegen → *YouTube Data API v3* aktivieren.
-2. *Anmeldedaten* → **API-Schlüssel** → `YOUTUBE_API_KEY`.
-3. *OAuth-Zustimmungsbildschirm* einrichten (Typ „Extern“, dich als Testnutzer eintragen), dann *OAuth-Client-ID* vom Typ **Desktop-App** → JSON herunterladen → `secrets/youtube_client_secret.json`.
-4. `content-crew auth-youtube` (öffnet den Browser zum Anmelden).
-
-**Instagram** (Business/Creator-Konto, verbunden mit einer Facebook-Seite)
-1. developers.facebook.com → App anlegen → Produkt *Instagram Graph API*.
-2. Im *Graph API Explorer* einen Token mit `instagram_basic`, `instagram_content_publish`, `instagram_manage_insights`, `pages_show_list`, `pages_read_engagement` erzeugen und in einen **langlebigen Token** (60 Tage) umwandeln → `INSTAGRAM_ACCESS_TOKEN`.
-3. Deine Instagram-Business-ID (`GET /me/accounts` → Seite → `instagram_business_account`) → `INSTAGRAM_USER_ID`.
-4. Wenn der Token abläuft, ruft Jarvis dich an.
-
-**TikTok**
-1. developers.tiktok.com → App anlegen → Produkte *Login Kit* und *Content Posting API* (Direct Post) hinzufügen, Scopes `video.publish`, `video.list`, `user.info.basic`.
-2. *Client Key* / *Client Secret* → `.env`.
-3. Per Login-Kit-OAuth einen Access- und Refresh-Token für dein Konto holen → `TIKTOK_ACCESS_TOKEN`, `TIKTOK_REFRESH_TOKEN`.
-4. App zur Prüfung einreichen, damit Videos öffentlich werden.
-
-**Öffentliche URL (für Antworten per SMS/Sprache und für Instagram)**
+### 4. Testen
 ```bash
-cloudflared tunnel --url http://localhost:8787     # oder: jarvis tunnel
+content-crew test-sms                  # SMS an dein Handy
+content-crew test-call                 # Jarvis ruft dich an
+content-crew --dry-run cycle           # Testlauf: Video wird erstellt, nichts hochgeladen, keine SMS
 ```
-Die angezeigte `https://…trycloudflare.com`-Adresse in `config.yaml` → `notify.public_base_url` eintragen.
-In Twilio bei deiner Nummer eintragen: *A message comes in* → Webhook `https://DEINE-URL/sms` (POST).
+Das Testvideo liegt danach in `data/videos/`.
 
-### 4. Prüfen und starten
+### 5. Starten
 ```bash
-content-crew doctor              # zeigt, was noch fehlt
-content-crew --dry-run cycle     # Testlauf: Video wird erstellt, nichts hochgeladen, keine SMS
-content-crew cycle               # ein echter Durchlauf
-content-crew run                 # Dauerbetrieb (alle 4 Stunden ein Durchlauf + Webhook-Server)
-content-crew status              # Übersicht über Videos und Learnings
+bash scripts/start.sh                  # startet Ollama, Jarvis und das Team
 ```
+Beim Start passiert automatisch:
+- Jarvis-Server wird gestartet, falls er nicht läuft
+- ein Cloudflare-Tunnel gibt deinem PC eine öffentliche Adresse (für Instagram-Uploads und deine SMS-Antworten)
+- diese Adresse wird automatisch bei deiner Twilio-Nummer als SMS-Webhook eingetragen
+- du bekommst eine SMS „Jarvis ist gestartet“
+- alle 4 Stunden läuft eine Runde: Zahlen prüfen → lernen → Trends → planen → Skript → Video → Upload
 
-Fertige Videos liegen in `data/videos/`, alles andere in `data/crew.db`.
+Weitere Befehle: `content-crew status` (Übersicht), `content-crew publish 12` (Video 12 sofort hochladen).
+
+### 6. Automatisch beim Hochfahren starten
+
+**Linux / macOS / WSL mit systemd:**
+```bash
+bash scripts/install_autostart.sh
+```
+**Windows:** Einmalig in WSL `sudo nano /etc/wsl.conf` → eintragen:
+```
+[boot]
+systemd=true
+```
+In PowerShell `wsl --shutdown`, Ubuntu wieder öffnen, `bash scripts/install_autostart.sh` ausführen.
+Damit WSL nach dem Windows-Start hochfährt: *Aufgabenplanung* → *Einfache Aufgabe* → Trigger „Bei Anmeldung“ →
+Programm `wsl.exe`, Argumente `-d Ubuntu-24.04 -- true`. Energieoptionen: Ruhezustand ausschalten, sonst schläft das Team mit.
 
 ### Wichtige Einstellungen (`config.yaml`)
 

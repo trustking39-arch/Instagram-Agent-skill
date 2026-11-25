@@ -44,7 +44,8 @@ class YouTube(Platform):
         from google_auth_oauthlib.flow import InstalledAppFlow
 
         flow = InstalledAppFlow.from_client_secrets_file(str(self.secret_file), SCOPES)
-        creds = flow.run_local_server(port=0)
+        creds = flow.run_local_server(port=8790, open_browser=True,
+                                      authorization_prompt_message="Öffne diesen Link zum YouTube-Login:\n{url}\n")
         self.token_file.write_text(creds.to_json(), encoding="utf-8")
 
     def _service(self):
