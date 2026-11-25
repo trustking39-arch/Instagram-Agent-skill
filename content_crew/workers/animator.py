@@ -23,12 +23,16 @@ DESIGNER_SYSTEM = (
     "Keine falschen Versprechen."
 )
 
-FORMAT = (
-    '{"type": "ring_escape", "params": {"rings": 30}, "palette": "neon", "music": "fur_elise", '
-    '"sound": "bell", "duration": 35, "title": "kurzer Titel", '
-    '"caption": "Schafft er alle 30 Ringe? 😳 Schreib deine Schätzung!", '
-    '"hashtags": ["#satisfying", "#simulation"]}'
-)
+def example_format(kind: str | None) -> str:
+    """JSON-Beispiel für genau diese Animationsart (ein fremdes Beispiel schreibt das kleine Modell sonst ab)."""
+    kind = kind if kind in TYPES else "ring_escape"
+    spec = TYPES[kind]
+    first, rule = next(iter(spec["params"].items()))
+    value = rule[0] if isinstance(rule, list) else rule[2]
+    return json.dumps({
+        "type": kind, "params": {first: value}, "palette": "neon", "music": "...", "sound": "...", "duration": 35,
+        "title": "NEUER kurzer Titel (3-6 Wörter)", "caption": "NEUE Frage an die Zuschauer passend zu dieser Animation",
+        "hashtags": spec["tags"][:2]}, ensure_ascii=False)
 
 
 class AnimationDesigner:
@@ -54,7 +58,8 @@ class AnimationDesigner:
         if previous and feedback:
             prompt.append("Dein vorheriges Konzept:\n" + json.dumps(previous, ensure_ascii=False))
             prompt.append(f"Kritik vom Chef, unbedingt umsetzen:\n{feedback}")
-        prompt.append(f"Antworte nur mit JSON in genau dieser Form: {FORMAT}")
+        prompt.append("Antworte nur mit JSON in genau dieser Form. Titel und Caption schreibst du NEU, passend zu "
+                      f"dieser Animation – nichts aus Beispielen übernehmen: {example_format(kind)}")
         try:
             raw = self.llm.chat_json(DESIGNER_SYSTEM, "\n\n".join(prompt), temperature=0.9)
         except Exception as exc:  # noqa: BLE001 – ohne KI trotzdem ein gutes Video

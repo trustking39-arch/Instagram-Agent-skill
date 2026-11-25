@@ -142,6 +142,23 @@ def _choice(value, options, fallback):
     return fallback
 
 
+FOREIGN_WORDS = {  # eindeutige Wörter, die nur zu einer Animationsart passen
+    "ring_escape": ["ringe", "ring-flucht"], "escape_multiply": ["zu zwei", "verdoppel", "vermehr"],
+    "growing_ball": ["wächst", "wachsend", "wird größer"], "color_wars": ["farbe gewinnt", "dein team", "farben-krieg"],
+    "polyrhythm": ["polyrhythm", "treffen sich", "alle treffen"], "galton": ["glockenkurve", "galton"],
+    "spin_arena": ["welche nummer", "sechseck", "dreh-arena"], "string_art": ["faden", "fäden"],
+}
+
+
+def _foreign_text(kind: str, text: str) -> bool:
+    """True, wenn der Text klar zu einer anderen Animationsart gehört (und nicht zu dieser)."""
+    low = text.lower()
+    own = any(w in low for w in FOREIGN_WORDS.get(kind, []))
+    other = any(w in low for k, words in FOREIGN_WORDS.items() if k != kind for w in words)
+    labels = any(spec["label"].lower() in low for k, spec in TYPES.items() if k != kind)
+    return labels or (other and not own)
+
+
 def _music_key(value, options: list[str]) -> str | None:
     """Musik auch erkennen, wenn die KI den deutschen Namen schreibt (z. B. „Für Elise“)."""
     low = str(value or "").strip().lower()
@@ -204,8 +221,11 @@ def normalize_concept(raw: dict | None, force_type: str | None = None, rng: rand
         seed = rng.randrange(1, 1 << 30)
 
     caption = re.sub(r"\s*#[\w\u00c0-\u017f]+", "", str(raw.get("caption") or "")).strip()  # Hashtags kommen separat
+    title = str(raw.get("title") or "").strip()
+    if _foreign_text(kind, f"{title} {caption}") or "NEUE" in caption or "NEUER" in title:
+        caption, title = "", ""  # abgeschrieben oder für eine andere Animation gedacht
     caption = caption or spec["caption"].format(**params)
-    title = str(raw.get("title") or "").strip() or caption.split("?")[0][:80]
+    title = title or caption.split("?")[0][:80]
     tags = pick_hashtags(raw.get("hashtags"), kind, music)
     music_label = MELODY_LABELS.get(music) or SCALE_LABELS.get(music, music)
     return {

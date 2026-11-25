@@ -139,3 +139,24 @@ def test_endless_batch_stops_on_owner_stop(anim_cfg):
     created = boss.run_batch(["Faden-Netz", "Galton-Brett"], 0)
     assert [db.video(v)["script"]["type"] for v in created] == ["string_art", "galton"]
     assert "pausiert" in db.activity("jarvis")["text"]
+
+
+def test_copied_or_foreign_caption_is_replaced():
+    c = normalize_concept({"title": "Ring-Flucht", "caption": "Schafft er alle 30 Ringe? 😳 Schreib deine Schätzung!"},
+                          force_type="polyrhythm")
+    assert "Ringe" not in c["caption"] and c["title"] != "Ring-Flucht"
+    own = normalize_concept({"title": "Goldene Kugel", "caption": "Ganz einfach – erkennst du das Lied? 🎶"},
+                            force_type="growing_ball")
+    assert own["caption"].startswith("Ganz einfach")
+
+
+def test_polyrhythm_differs_between_videos():
+    from content_crew.animation.engine import Ctx
+    from content_crew.animation.palettes import PALETTES
+    from content_crew.animation.scenes import SCENES
+
+    def cycles(seed):
+        ctx = Ctx(180, 320, 15, 30, seed, PALETTES["neon"], "pentatonic")
+        return SCENES["polyrhythm"](ctx, {"layout": "orbits", "dots": 21, "speed": 0.3}, headless=True).cycles
+
+    assert len({tuple(cycles(s)) for s in range(1, 9)}) > 1

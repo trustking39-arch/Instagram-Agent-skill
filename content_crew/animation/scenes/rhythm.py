@@ -28,15 +28,21 @@ class Polyrhythm(Scene):
         self.layout = params.get("layout", "arcs")
         self.N = n = max(4, int(params.get("dots", 21)))
         self.T = self.target
-        base = max(3, round(self.T * float(params.get("speed", 0.3))))
-        self.cycles = [base + i for i in range(n)]
+        rng = self.rng  # jedes Video bekommt sein eigenes Muster
+        base = max(3, round(self.T * float(params.get("speed", 0.3))) + rng.randint(-2, 4))
+        step = rng.choice([1, 1, 2])
+        self.cycles = [base + step * i for i in range(n)]
+        if rng.random() < 0.5:  # mal innen schneller, mal außen
+            self.cycles.reverse()
         per = 1 if self.layout == "orbits" else 2  # Treffer pro Umlauf
         self.per = per
         self.hits = [0] * n
         self.glow = [0.0] * n
         scale = self.music.scale
         span = min(n, len(scale) * 4)  # höchstens vier Oktaven
-        self.pitches = [self.music.degree(int(i * span / n), -1) for i in range(n)]
+        order = sorted(range(n), key=lambda i: self.cycles[i])
+        rank = {i: r for r, i in enumerate(order)}
+        self.pitches = [self.music.degree(int(rank[i] * span / n), -1) for i in range(n)]
         self.cx = W * 0.5
         if self.layout == "arcs":
             self.base_y = H * 0.6
