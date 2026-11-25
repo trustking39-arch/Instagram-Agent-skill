@@ -1,0 +1,27 @@
+[project]
+name = "content-crew"
+version = "0.1.0"
+description = "Jarvis als Chef eines KI-Teams: Trends analysieren, Videos erstellen, hochladen, Viralität prüfen, per SMS/Anruf melden."
+requires-python = ">=3.10"
+dependencies = [
+    "requests>=2.31",
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+youtube = ["google-api-python-client>=2.100", "google-auth-oauthlib>=1.2"]
+twilio = ["twilio>=9.0", "fastapi>=0.110", "uvicorn>=0.29", "python-multipart>=0.0.9"]
+tts = ["edge-tts>=6.1"]
+all = ["content-crew[youtube,twilio,tts]"]
+dev = ["pytest>=8"]
+
+[project.scripts]
+content-crew = "content_crew.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["content_crew*"]
