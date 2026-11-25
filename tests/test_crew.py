@@ -168,3 +168,15 @@ def test_webhook_rejects_strangers_and_accepts_owner(cfg, db, monkeypatch):
     assert r.status_code == 200 and "Jarvis ist aktiv" in r.text
     assert client.get("/media/../crew.db").status_code == 404
     json.dumps(r.text)
+
+
+def test_webhook_rejects_everyone_without_owner_number(cfg, db, monkeypatch):
+    pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient
+
+    from content_crew.webhooks import create_app
+
+    monkeypatch.delenv("OWNER_PHONE_NUMBER", raising=False)
+    client = TestClient(create_app(cfg, db))
+    assert client.post("/sms", data={"From": "+4900", "Body": "STOP"}).status_code == 403
+    assert not db.paused

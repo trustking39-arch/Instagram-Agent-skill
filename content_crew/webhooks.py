@@ -35,7 +35,7 @@ def create_app(cfg: Config, db: DB):
             signature = request.headers.get("X-Twilio-Signature", "")
             if not RequestValidator(token).validate(url, form, signature):
                 raise HTTPException(status_code=403, detail="Ungültige Twilio-Signatur")
-        if owner and form.get("From") != owner:
+        if not owner or form.get("From") != owner:  # ohne eingetragene Besitzer-Nummer nimmt niemand Befehle an
             raise HTTPException(status_code=403, detail="Unbekannter Absender")
         return form
 
