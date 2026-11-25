@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import json
-import random
 import logging
+import random
 import re
 import time
 
@@ -175,6 +175,14 @@ class Boss:
     def review_animation(self, concept: dict, recent: list[str]) -> dict:
         shown = {k: concept.get(k) for k in ("type", "label", "params", "palette", "music", "sound", "duration",
                                              "title", "caption", "hashtags")}
+        try:
+            return self._review_animation(shown, recent)
+        except Exception as exc:  # noqa: BLE001 – ohne Sprachmodell weiterproduzieren
+            log.warning("Jarvis kann das Konzept gerade nicht bewerten (%s) – übernehme es ungeprüft", exc)
+            return {"score": float(self.cfg["boss"]["min_script_score"]),
+                    "feedback": "Jarvis war nicht erreichbar – Konzept ungeprüft übernommen."}
+
+    def _review_animation(self, shown: dict, recent: list[str]) -> dict:
         result = self.llm.chat_json(
             BOSS_SYSTEM,
             "Bewerte dieses Konzept für ein animiertes TikTok-Video streng von 1 bis 10: Spannung ab Sekunde 1, "
@@ -322,7 +330,7 @@ class Boss:
         learnings = self.db.notes("learning", 10)
         instructions = self.db.notes("instruction", 3)
         insights_cache: dict[str, dict] = {}
-        attempts = 0
+        attempts = failures = 0
         while endless or (len(created) < count and attempts < count * 2):
             if endless:
                 instructions = self.handle_inbox() + self.db.notes("instruction", 3)
@@ -341,7 +349,11 @@ class Boss:
             try:
                 if topic not in insights_cache:
                     act("scout", f"analysiert, was bei „{niche}“ viral geht")
-                    insights_cache[topic] = self.scout.run(topic)
+                    try:
+                        insights_cache[topic] = self.scout.run(topic)
+                    except Exception as exc:  # noqa: BLE001 – ohne Trends geht es auch
+                        log.warning("Trend-Analyse für %s nicht möglich: %s", niche, exc)
+                        insights_cache[topic] = {}
                     act("scout", f"fertig mit „{niche}“")
                 if kind:
                     # Die Art steht fest: Jarvis gibt dem Designer direkt den Auftrag (spart einen KI-Aufruf
@@ -362,6 +374,11 @@ class Boss:
             except Exception as exc:  # noqa: BLE001
                 log.exception("Serienvideo in %s fehlgeschlagen", niche)
                 act("jarvis", f"Fehler in „{niche}“: {exc}"[:200])
+                failures += 1
+                if failures >= 3:  # nicht im Sekundentakt scheitern (z. B. Server neu gestartet)
+                    time.sleep(min(300, 20 * failures))
+                continue
+            failures = 0
         done = "pausiert (STOP)" if endless and self.db.paused else "Serie fertig"
         self.db.set_activity("jarvis", f"{done} – {len(created)} Videos warten auf den Upload")
         return created

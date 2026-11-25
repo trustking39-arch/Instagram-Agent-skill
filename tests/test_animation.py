@@ -175,3 +175,15 @@ def test_jarvis_varies_repeated_concepts(anim_cfg):
     assert again["palette"] != "fire" and again["music"] != "canon"
     assert again["params"] != first["params"]
     assert "Siebeneck" not in again["title"] or again["params"]["sides"] == 7
+
+
+class DeadLLM:
+    def chat_json(self, *a, **kw):
+        raise ConnectionError("Jarvis-Server nicht erreichbar")
+
+
+def test_batch_keeps_producing_without_language_model(anim_cfg):
+    db = DB(anim_cfg.data_dir / "crew.db")
+    boss = Boss(anim_cfg, db, DeadLLM(), Notifier(anim_cfg, db), platforms={})
+    created = boss.run_batch(["Galton-Brett"], 1)
+    assert len(created) == 1 and db.video(created[0])["script"]["type"] == "galton"
