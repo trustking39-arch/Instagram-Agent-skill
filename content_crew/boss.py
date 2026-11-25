@@ -317,9 +317,15 @@ class Boss:
                     act("scout", f"analysiert, was bei „{niche}“ viral geht")
                     insights_cache[topic] = self.scout.run(topic)
                     act("scout", f"fertig mit „{niche}“")
-                plan = self.plan(insights_cache[topic], learnings, instructions, 1, niche=niche)
-                if not plan["ideas"] and kind:  # Plan leer? Dann entscheidet der Designer allein
-                    plan["ideas"] = [{"idea": TYPES[kind]["idee"], "type": kind}]
+                if kind:
+                    # Die Art steht fest: Jarvis gibt dem Designer direkt den Auftrag (spart einen KI-Aufruf
+                    # pro Video). Bewertet und zurückgeschickt wird trotzdem jedes Konzept.
+                    orders = "; ".join(instructions[:3])
+                    plan = {"ideas": [{"idea": TYPES[kind]["idee"], "type": kind, "instructions": (
+                        "Andere Farben und Musik als bei unseren letzten Videos. "
+                        + (f"Anweisungen des Besitzers: {orders}" if orders else ""))}]}
+                else:
+                    plan = self.plan(insights_cache[topic], learnings, instructions, 1, niche=niche)
                 for idea in plan["ideas"]:
                     if kind:
                         idea["type"] = kind
