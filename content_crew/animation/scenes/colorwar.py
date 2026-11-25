@@ -105,7 +105,9 @@ class ColorWars(Scene):
         s, br = self.s, self.br
         for b in self.balls:
             period, phase = self.waves[b.team]
-            want = self.speed * (1 + 0.45 * math.sin(TAU * self.t / period + phase))
+            power = math.sin(TAU * self.t / period + phase)
+            splash = 3 if power > 0.8 else 2 if power > 0.5 else 1 if power > 0.2 else 0  # Stärkephase: große Bissen
+            want = self.speed * (1 + 0.35 * power)
             have = math.hypot(b.vx, b.vy) or 1.0
             b.vx, b.vy = b.vx * want / have, b.vy * want / have
             b.x += b.vx * h
@@ -133,6 +135,8 @@ class ColorWars(Scene):
                 flipped = True
                 if not self.headless:
                     self.dirty.append((r, c))
+                if splash:
+                    self._splash(r, c, b.team, splash)
                 if abs(ca) > abs(sa):
                     if b.vx * ca > 0:
                         b.vx = -b.vx
@@ -144,6 +148,24 @@ class ColorWars(Scene):
                 if self.t - self.last_note[b.team] > 0.035 * self.teams:
                     self.last_note[b.team] = self.t
                     self.play(self.music.degree(self._degree(b)), 0.32, b.x)
+
+    def _splash(self, r0: int, c0: int, team: int, k: int) -> None:
+        """Mehrere Felder auf einmal erobern (nur gegnerische, ohne Abprallen)."""
+        gained = 0
+        for r in range(max(0, r0 - k), min(self.rows, r0 + k + 1)):
+            for c in range(max(0, c0 - k), min(self.cols, c0 + k + 1)):
+                if (r - r0) ** 2 + (c - c0) ** 2 > k * k + 0.5 or self.grid[r][c] == team:
+                    continue
+                self.counts[self.grid[r][c]] -= 1
+                self.counts[team] += 1
+                self.grid[r][c] = team
+                gained += 1
+                if not self.headless:
+                    self.dirty.append((r, c))
+        if gained >= 3 and not self.headless:
+            x, y = self.x0 + (c0 + 0.5) * self.s, self.y0 + (r0 + 0.5) * self.s
+            self.particles.burst([x] * 10, [y] * 10, self.colors[team], speed=self.W * 0.25, size=self.s * 0.3,
+                                 life=0.6)
 
     def _degree(self, b: _Ball) -> int:
         span = len(self.music.scale) * 2
