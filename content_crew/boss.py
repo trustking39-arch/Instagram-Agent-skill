@@ -237,6 +237,14 @@ class Boss:
             log.exception("Animation fehlgeschlagen")
             return None
         concept["render"] = info
+        rendered = {k: v for k, v in info["params"].items() if k in concept["params"]}
+        if rendered != concept["params"]:  # die Engine hat z. B. die Fadenzahl an die Länge angepasst
+            concept["params"].update(rendered)
+            if not self.designer.ki_text:
+                from content_crew.animation.catalog import make_text
+
+                concept["title"], concept["caption"] = make_text(concept["type"], concept["params"],
+                                                                 concept["music"], concept["seed"])
         self.db.update_video(video_id, script=concept, path=str(path), status="produced")
         if info["problems"]:
             act("jarvis", f"Video #{video_id} fällt durch die Prüfung: {', '.join(info['problems'])}")
