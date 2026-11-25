@@ -31,6 +31,7 @@ class GrowingBall(Scene):
         self.vx = W * rng.uniform(-0.6, 0.6)
         self.vy = 0.0
         self.bounces = 0
+        self.frames = 0
         self.pulse = 0.0
         self.max_r = self.R * 0.985
         self.layer = None
@@ -97,16 +98,19 @@ class GrowingBall(Scene):
         if self.layer is None or self.done_at is not None:
             return
         lc = self.layer.getCanvas()
+        self.frames += 1
+        if self.frames % 4 == 0:  # alte Spuren verblassen langsam, damit das Muster nicht zuläuft
+            lc.drawPaint(skia.Paint(Color=skia.Color(0, 0, 0, 251), BlendMode=skia.BlendMode.kDstIn))
         rgb = self.tone()
         if self.trail_mode == "fill":
-            lc.drawCircle(self.x, self.y, self.r, skia.Paint(AntiAlias=True, Color=color(rgb, 0.10)))
+            lc.drawCircle(self.x, self.y, self.r, skia.Paint(AntiAlias=True, Color=color(rgb, 0.06)))
             lc.drawCircle(self.x, self.y, self.r, skia.Paint(
                 AntiAlias=True, Style=skia.Paint.kStroke_Style, StrokeWidth=max(1.0, self.W * 0.0015),
-                Color=color(rgb, 0.5)))
+                Color=color(rgb, 0.4)))
         else:
             lc.drawCircle(self.x, self.y, self.r, skia.Paint(
-                AntiAlias=True, Style=skia.Paint.kStroke_Style, StrokeWidth=max(1.5, self.W * 0.0026),
-                Color=color(rgb, 0.85)))
+                AntiAlias=True, Style=skia.Paint.kStroke_Style, StrokeWidth=max(1.2, self.W * 0.002),
+                Color=color(rgb, 0.5)))
 
     def draw(self, c: skia.Canvas) -> None:
         if self.layer is not None:
@@ -117,7 +121,11 @@ class GrowingBall(Scene):
             Color=color(mix(rim, WHITE, 0.3))))
         rgb = self.tone()
         grow = 1 + 0.04 * self.pulse
-        c.drawCircle(self.x, self.y, self.r * grow, skia.Paint(AntiAlias=True, Color=color(mix(rgb, WHITE, 0.15))))
+        r = self.r * grow
+        shine = skia.GradientShader.MakeRadial(  # Licht von links oben: wirkt wie eine Kugel
+            skia.Point(self.x - r * 0.35, self.y - r * 0.4), r * 1.5,
+            [color(mix(rgb, WHITE, 0.55)), color(rgb), color(mix(rgb, (0, 0, 0), 0.35))], [0.0, 0.55, 1.0])
+        c.drawCircle(self.x, self.y, r, skia.Paint(AntiAlias=True, Shader=shine))
         c.drawCircle(self.x, self.y, self.r * grow, skia.Paint(
             AntiAlias=True, Style=skia.Paint.kStroke_Style, StrokeWidth=max(2.0, self.W * 0.005),
             Color=color(WHITE, 0.9)))
