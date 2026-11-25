@@ -146,8 +146,12 @@ FOREIGN_WORDS = {  # eindeutige Wörter, die nur zu einer Animationsart passen
     "ring_escape": ["ringe", "ring-flucht"], "escape_multiply": ["zu zwei", "verdoppel", "vermehr"],
     "growing_ball": ["wächst", "wachsend", "wird größer"], "color_wars": ["farbe gewinnt", "dein team", "farben-krieg"],
     "polyrhythm": ["polyrhythm", "treffen sich", "alle treffen"], "galton": ["glockenkurve", "galton"],
-    "spin_arena": ["welche nummer", "sechseck", "dreh-arena"], "string_art": ["faden", "fäden"],
+    "spin_arena": ["welche nummer", "dreh-arena"], "string_art": ["faden", "fäden"],
 }
+
+
+SHAPES = {3: "Dreieck", 4: "Viereck", 5: "Fünfeck", 6: "Sechseck", 7: "Siebeneck", 8: "Achteck"}
+SHAPE_WORDS = r"\b(dreieck|viereck|quadrat|fünfeck|sechseck|siebeneck|achteck|hexagon|pentagon|oktagon|vieleck)\b"
 
 
 def _foreign_text(kind: str, text: str) -> bool:
@@ -226,6 +230,9 @@ def normalize_concept(raw: dict | None, force_type: str | None = None, rng: rand
         caption, title = "", ""  # abgeschrieben oder für eine andere Animation gedacht
     caption = caption or spec["caption"].format(**params)
     title = title or caption.split("?")[0][:80]
+    if kind == "spin_arena":  # die Form im Text muss zur Animation passen (7 Seiten = Siebeneck)
+        shape = SHAPES.get(int(params.get("sides", 6)), "Vieleck")
+        caption, title = (re.sub(SHAPE_WORDS, shape, t, flags=re.I) for t in (caption, title))
     tags = pick_hashtags(raw.get("hashtags"), kind, music)
     music_label = MELODY_LABELS.get(music) or SCALE_LABELS.get(music, music)
     return {
