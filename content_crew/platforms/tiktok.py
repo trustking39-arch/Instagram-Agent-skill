@@ -78,7 +78,8 @@ class TikTok(Platform):
         count = max(1, size // chunk)
         init = self._post("post/publish/video/init/", {
             "post_info": {
-                "title": f"{title} {' '.join(tags)}"[:2200],
+                # Auf TikTok ist der Beschreibungstext alles, was man sieht: Frage + Hashtags
+                "title": f"{description or title} {' '.join(tags)}"[:2200],
                 "privacy_level": self._privacy(),
                 "disable_comment": False,
                 "disable_duet": False,

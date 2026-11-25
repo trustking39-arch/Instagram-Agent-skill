@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import random
+import re
 
 from content_crew.animation.audio import INSTRUMENTS, MELODIES, SCALES
 from content_crew.animation.palettes import PALETTES
@@ -18,7 +19,7 @@ TYPES: dict[str, dict] = {
         "params": {"rings": (8, 50, 26), "balls": (1, 3, 1), "gravity": (0.6, 1.6, 1.0), "spin": (0.5, 2.0, 1.0),
                    "pattern": ["spiral", "alternating", "random"]},
         "caption": "Schafft er alle {rings} Ringe? 😳 Schreib deine Schätzung in die Kommentare!",
-        "tags": ["#satisfying", "#simulation", "#physics", "#animation", "#asmr"],
+        "tags": ["#satisfying", "#simulation", "#bouncingball", "#oddlysatisfying", "#physics"],
     },
     "escape_multiply": {
         "label": "Ball-Vermehrung",
@@ -27,7 +28,7 @@ TYPES: dict[str, dict] = {
                 "neuen Bällen in der Mitte – exponentielles Chaos bis zum großen Knall. Oben zählt eine Zahl die Bälle.",
         "params": {"max_balls": (40, 300, 150), "gravity": (0.6, 1.6, 1.0), "spin": (0.5, 2.0, 1.0)},
         "caption": "Jeder Ball, der entkommt, wird zu zwei 🤯 Bei welcher Zahl platzt der Ring?",
-        "tags": ["#satisfying", "#simulation", "#chaos", "#animation", "#oddlysatisfying"],
+        "tags": ["#satisfying", "#simulation", "#chaos", "#oddlysatisfying", "#physics"],
     },
     "growing_ball": {
         "label": "Wachsender Ball",
@@ -37,7 +38,7 @@ TYPES: dict[str, dict] = {
                 "immer schneller – großes Finale.",
         "params": {"gravity": (0.6, 1.6, 1.0), "trail": ["outline", "fill"], "start_size": (0.02, 0.06, 0.03)},
         "caption": "Jeder Aufprall = größer & die nächste Note 🎶 Erkennst du das Lied?",
-        "tags": ["#satisfying", "#bouncingball", "#music", "#animation", "#oddlysatisfying"],
+        "tags": ["#satisfying", "#bouncingball", "#oddlysatisfying", "#music", "#simulation"],
     },
     "color_wars": {
         "label": "Farben-Krieg",
@@ -46,7 +47,7 @@ TYPES: dict[str, dict] = {
                 "prallt ab. Zahlen oben zeigen den Stand – wer hat am Ende die meiste Fläche?",
         "params": {"teams": [2, 4], "cols": (18, 40, 26), "speed": (0.7, 1.6, 1.0), "balls_per_team": (1, 3, 1)},
         "caption": "Welche Farbe gewinnt? 👀 Wähl dein Team in den Kommentaren!",
-        "tags": ["#satisfying", "#simulation", "#pongwars", "#colors", "#animation"],
+        "tags": ["#pongwars", "#satisfying", "#simulation", "#oddlysatisfying", "#colors"],
     },
     "polyrhythm": {
         "label": "Polyrhythmus",
@@ -56,7 +57,7 @@ TYPES: dict[str, dict] = {
                 "treffen sich alle gleichzeitig (Countdown oben).",
         "params": {"layout": ["arcs", "wave", "orbits"], "dots": (12, 30, 21), "speed": (0.2, 0.45, 0.3)},
         "caption": "Warte, bis sich alle treffen 🤯 Hast du bis zum Ende geschaut?",
-        "tags": ["#satisfying", "#polyrhythm", "#hypnotic", "#animation", "#relaxing"],
+        "tags": ["#polyrhythm", "#satisfying", "#hypnotic", "#relaxing", "#asmr"],
     },
     "galton": {
         "label": "Galton-Brett",
@@ -66,7 +67,7 @@ TYPES: dict[str, dict] = {
                 "Glockenkurve, die aufleuchtet.",
         "params": {"rows": (8, 14, 12), "balls": (120, 400, 220)},
         "caption": "In welchem Fach landen die meisten Kugeln? 🎯 Tipp jetzt!",
-        "tags": ["#satisfying", "#galtonboard", "#physics", "#math", "#animation"],
+        "tags": ["#galtonboard", "#satisfying", "#physik", "#mathe", "#oddlysatisfying"],
     },
     "spin_arena": {
         "label": "Dreh-Arena",
@@ -76,7 +77,7 @@ TYPES: dict[str, dict] = {
                 "als Letzte übrig? Der Sieger wird groß gefeiert.",
         "params": {"sides": (3, 8, 6), "balls": (6, 16, 10), "spin": (0.4, 1.6, 0.9), "gravity": (0.6, 1.5, 1.0)},
         "caption": "Welche Nummer bleibt als Letzte drin? 👀 Schreib deinen Tipp in die Kommentare!",
-        "tags": ["#satisfying", "#simulation", "#physics", "#hexagon", "#animation"],
+        "tags": ["#satisfying", "#simulation", "#bouncingball", "#oddlysatisfying", "#physics"],
     },
 }
 
@@ -89,6 +90,16 @@ MELODY_LABELS = {
 SCALE_LABELS = {"pentatonic": "freie Melodie (pentatonisch)", "major": "freie Melodie (Dur)",
                 "minor": "freie Melodie (Moll)", "dreamy": "freie Melodie (verträumt)",
                 "japanese": "freie Melodie (japanisch)"}
+# Lied- und Saison-Hashtags (Weihnachtsmelodien bringen im Advent zusätzliche Reichweite)
+MELODY_TAGS = {
+    "jingle_bells": "#weihnachten", "silent_night": "#weihnachten", "twinkle": "#weihnachten",
+    "fur_elise": "#fürelise", "ode_to_joy": "#beethoven", "mountain_king": "#klassik", "canon": "#klassik",
+    "greensleeves": "#klassik",
+}
+# Riesige Sammel-Hashtags helfen TikTok nicht beim Einordnen – das Video geht darin unter.
+LOW_VALUE_TAGS = {"#fyp", "#foryou", "#foryoupage", "#fy", "#viral", "#fürdich", "#fürdichseite", "#trending",
+                  "#xyzbca", "#explore", "#tiktok"}
+MAX_TAGS = 5
 # Bei diesen Arten spielt jeder Punkt/jedes Team eigene Töne – eine Melodie passt dort nicht.
 SCALE_ONLY = {"polyrhythm", "color_wars", "galton"}
 DEFAULT_SOUND = {"ring_escape": "bell", "escape_multiply": "glass", "growing_ball": "pluck",
@@ -132,6 +143,23 @@ def _music_key(value, options: list[str]) -> str | None:
     return None
 
 
+def pick_hashtags(suggested, kind: str, music: str | None) -> list[str]:
+    """3-5 Hashtags: Nische zuerst, dann Lied/Saison, dann passende Vorschläge der KI."""
+    spec = TYPES[kind]["tags"]
+    ki = [str(t).strip().replace(" ", "") for t in (suggested or []) if str(t).strip()]
+    ki = [t if t.startswith("#") else f"#{t}" for t in ki]
+    song = [MELODY_TAGS[music]] if music in MELODY_TAGS else []
+    out: list[str] = []
+    for t in spec[:3] + song + ki + spec[3:]:
+        low = t.lower()
+        if low in LOW_VALUE_TAGS or low in (x.lower() for x in out) or len(t) < 3:
+            continue
+        out.append(t)
+        if len(out) >= MAX_TAGS:
+            break
+    return out
+
+
 def normalize_concept(raw: dict | None, force_type: str | None = None, rng: random.Random | None = None,
                       randomize: bool = False) -> dict:
     """Konzept vom KI-Designer prüfen: unbekannte Werte ersetzen, Zahlen begrenzen, Texte auffüllen."""
@@ -164,20 +192,15 @@ def normalize_concept(raw: dict | None, force_type: str | None = None, rng: rand
     except (TypeError, ValueError):
         seed = rng.randrange(1, 1 << 30)
 
-    caption = str(raw.get("caption") or "").strip() or spec["caption"].format(**params)
+    caption = re.sub(r"\s*#[\w\u00c0-\u017f]+", "", str(raw.get("caption") or "")).strip()  # Hashtags kommen separat
+    caption = caption or spec["caption"].format(**params)
     title = str(raw.get("title") or "").strip() or caption.split("?")[0][:80]
-    tags = [str(t).strip().replace(" ", "") for t in (raw.get("hashtags") or []) if str(t).strip()]
-    tags = [t if t.startswith("#") else f"#{t}" for t in tags]
-    for t in spec["tags"]:
-        if len(tags) >= 8:
-            break
-        if t.lower() not in (x.lower() for x in tags):
-            tags.append(t)
+    tags = pick_hashtags(raw.get("hashtags"), kind, music)
     music_label = MELODY_LABELS.get(music) or SCALE_LABELS.get(music, music)
     return {
         "type": kind, "label": spec["label"], "params": params, "palette": palette, "music": music,
         "sound": sound, "duration": duration, "seed": seed,
-        "title": title[:100], "caption": caption[:2000], "hashtags": tags[:12],
+        "title": title[:100], "caption": caption[:2000], "hashtags": tags,
         "hook": f"{spec['label']} · {music_label} · Farben {palette}",
         "scenes": [],
     }

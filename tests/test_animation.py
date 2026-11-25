@@ -27,10 +27,11 @@ def has_audio(path: Path) -> bool:
 
 def test_normalize_concept_repairs_ki_output():
     c = normalize_concept({"type": "Ring-Flucht", "params": {"rings": 500, "pattern": "quatsch"},
-                           "music": "Für Elise", "palette": "NEON", "duration": 300, "hashtags": ["fyp"]})
+                           "music": "Für Elise", "palette": "NEON", "duration": 300,
+                           "hashtags": ["fyp", "#viral", "ballspiel"]})
     assert c["type"] == "ring_escape" and c["params"]["rings"] == 50 and c["params"]["pattern"] == "spiral"
     assert c["music"] == "fur_elise" and c["palette"] == "neon" and c["duration"] == 60
-    assert c["hashtags"][0] == "#fyp" and len(c["hashtags"]) >= 3
+    assert c["hashtags"] == ["#satisfying", "#simulation", "#bouncingball", "#fürelise", "#ballspiel"]
     assert c["caption"] and c["title"]
     # Polyrhythmus spielt eigene Töne pro Punkt: Melodien werden durch eine Tonleiter ersetzt
     assert normalize_concept({"music": "fur_elise"}, force_type="polyrhythm")["music"] not in ("fur_elise",)
