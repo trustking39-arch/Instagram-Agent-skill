@@ -7,7 +7,7 @@ import re
 from content_crew.db import DB
 
 HELP = (
-    "Befehle: STATUS, STOP (pausieren), START (weiter), OK <id> (Video freigeben), "
+    "Befehle: STATUS, STOP (pausieren), START (weiter), ANRUF (nach der Runde anrufen), OK <id> (Video freigeben), "
     "NEIN <id> (verwerfen). Jeder andere Text ist eine Anweisung an Jarvis."
 )
 
@@ -45,6 +45,9 @@ def handle_owner_message(db: DB, text: str, channel: str = "sms") -> str:
         return status_text(db)
     if upper in {"HILFE", "HELP", "?"}:
         return HELP
+    if upper in {"ANRUF", "RUF MICH AN", "ANRUFEN"}:
+        db.set_state("call_when_done", "1")
+        return "Mach ich: Ich rufe dich an, sobald die nächste Runde fertig ist."
     m = re.fullmatch(r"(OK|JA|NEIN|NO)\s+#?(\d+)", upper)
     if m:
         video = db.video(int(m.group(2)))

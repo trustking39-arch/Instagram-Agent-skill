@@ -242,7 +242,22 @@ class Boss:
                 created.append(vid)
         self.db.set_state("last_cycle", str(time.time()))
         act("jarvis", f"Runde fertig – {len(created)} Video(s). Wartet auf die nächste Runde")
+        if self.db.get_state("call_when_done") == "1":
+            self.db.set_state("call_when_done", "0")
+            self.notifier.call(self.cycle_summary(created, insights), kind="done", ask=True)
         return created
+
+    def cycle_summary(self, created: list[int], insights: dict) -> str:
+        titles = [self.db.video(v)["script"]["title"] for v in created]
+        parts = [f"Hallo, hier ist Jarvis. Mein Team ist fertig. Wir haben {len(created)} neue Videos gemacht."]
+        if titles:
+            parts.append("Titel: " + "; ".join(titles) + ".")
+        patterns = insights.get("patterns") or []
+        if patterns and isinstance(patterns, list):
+            parts.append("Was gerade viral geht: " + "; ".join(str(p) for p in patterns[:3]) + ".")
+        if self.cfg.dry_run:
+            parts.append("Wir sind noch im Testmodus, es wurde nichts hochgeladen.")
+        return " ".join(parts)
 
     def run_forever(self) -> None:
         minutes = float(self.cfg["boss"]["cycle_minutes"])

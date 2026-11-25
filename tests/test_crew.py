@@ -139,6 +139,18 @@ def test_full_cycle_with_revision_publish_and_viral_call(cfg, db):
     assert sorted(r["channel"] for r in viral) == ["call", "sms"]
 
 
+@pytest.mark.skipif(not shutil.which("ffmpeg"), reason="ffmpeg fehlt")
+def test_call_when_cycle_done(cfg, db):
+    assert "rufe dich an" in handle_owner_message(db, "Ruf mich an")
+    boss = Boss(cfg, db, FakeLLM(scores=(9,)), Notifier(cfg, db), platforms={"fake": FakePlatform(cfg)},
+                producer=VideoProducer(cfg))
+    boss.run_cycle()
+    calls = db.conn.execute("SELECT text FROM outbox WHERE kind='done' AND channel='call'").fetchall()
+    assert len(calls) == 1 and "Mein Team ist fertig" in calls[0]["text"] and "3 Routinen" in calls[0]["text"]
+    boss.run_cycle()  # nur einmal anrufen
+    assert db.conn.execute("SELECT COUNT(*) c FROM outbox WHERE kind='done'").fetchone()["c"] == 1
+
+
 def test_blocked_error_calls_once_per_day(cfg, db):
     boss = Boss(cfg, db, FakeLLM(), Notifier(cfg, db), platforms={})
     err = PlatformError("YouTube-Login abgelaufen", blocked=True)
