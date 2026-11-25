@@ -182,10 +182,49 @@ def test_dashboard_shows_team_and_is_local_only(cfg, db, monkeypatch):
     page = client.get("/").text
     assert "Skript-Autor" in page and "schreibt gerade" in page
     assert "Mein &lt;Test&gt; Video" in page and "Hochladen" in page
-    assert client.get("/", headers={"cf-connecting-ip": "1.2.3.4"}).status_code == 404
+    assert client.get("/", headers={"cf-connecting-ip": "1.2.3.4"}, follow_redirects=False).status_code == 303
     r = client.post("/dashboard/cmd", data={"text": "STOP"}, follow_redirects=False)
     assert r.status_code == 303 and db.paused
-    assert client.post("/dashboard/cmd", data={"text": "START"}, headers={"x-forwarded-for": "1.2.3.4"}).status_code == 404
+    assert client.post("/dashboard/cmd", data={"text": "START"}, headers={"x-forwarded-for": "1.2.3.4"}).status_code == 403
+
+
+def test_dashboard_from_phone_needs_password(cfg, db, monkeypatch):
+    pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient
+
+    from content_crew import webhooks
+
+    monkeypatch.setenv("DASHBOARD_PASSWORD", "richtig-geheim")
+    client = TestClient(webhooks.create_app(cfg, db))
+    phone = {"cf-connecting-ip": "5.6.7.8"}
+    r = client.get("/", headers=phone, follow_redirects=False)
+    assert r.status_code == 303 and r.headers["location"] == "/login"
+    assert "Anmelden" in client.get("/login", headers=phone).text
+    bad = client.post("/login", data={"password": "falsch"}, headers=phone, follow_redirects=False)
+    assert "error=falsch" in bad.headers["location"]
+    assert client.post("/dashboard/cmd", data={"text": "STOP"}, headers=phone).status_code == 403
+    ok = client.post("/login", data={"password": "richtig-geheim"}, headers=phone, follow_redirects=False)
+    assert ok.headers["location"] == "/" and "jarvis_session" in ok.headers["set-cookie"]
+    assert "Secure" in ok.headers["set-cookie"] and "HttpOnly" in ok.headers["set-cookie"]
+    client.cookies.set("jarvis_session", ok.cookies.get("jarvis_session") or ok.headers["set-cookie"].split(";")[0].split("=", 1)[1])
+    assert "Skript-Autor" in client.get("/", headers=phone).text
+    client.post("/dashboard/cmd", data={"text": "STOP"}, headers=phone)
+    assert db.paused
+
+
+def test_login_locks_after_many_failures(cfg, db, monkeypatch):
+    pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient
+
+    from content_crew import webhooks
+
+    monkeypatch.setenv("DASHBOARD_PASSWORD", "richtig-geheim")
+    client = TestClient(webhooks.create_app(cfg, db))
+    phone = {"cf-connecting-ip": "9.9.9.9"}
+    for _ in range(webhooks.MAX_FAILURES):
+        client.post("/login", data={"password": "x"}, headers=phone, follow_redirects=False)
+    r = client.post("/login", data={"password": "richtig-geheim"}, headers=phone, follow_redirects=False)
+    assert "error=gesperrt" in r.headers["location"]
 
 
 def test_webhook_rejects_everyone_without_owner_number(cfg, db, monkeypatch):

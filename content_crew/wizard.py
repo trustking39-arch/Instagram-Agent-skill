@@ -20,6 +20,9 @@ SECTIONS = [
         ("TWILIO_PHONE_NUMBER", "Deine Twilio-Nummer (+49…)", False),
         ("OWNER_PHONE_NUMBER", "DEINE Handynummer (+49…)", False),
     ]),
+    ("Übersicht fürs Handy – Passwort, mit dem du dich unterwegs anmeldest (mind. 10 Zeichen)", [
+        ("DASHBOARD_PASSWORD", "Passwort", True),
+    ]),
     ("Pexels – kostenlose Hintergrundvideos (pexels.com/api → API-Key)", [
         ("PEXELS_API_KEY", "Pexels API-Key", True),
     ]),

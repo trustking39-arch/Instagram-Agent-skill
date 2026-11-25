@@ -123,9 +123,21 @@ Beim Start passiert automatisch:
 - du bekommst eine SMS „Jarvis ist gestartet“
 - alle 4 Stunden läuft eine Runde: Zahlen prüfen → lernen → Trends → planen → Skript → Video → Upload
 
-Weitere Befehle: `content-crew status` (Übersicht), `content-crew publish 12` (Video 12 sofort hochladen).
+Weitere Befehle: `content-crew status` (Übersicht im Terminal), `content-crew publish 12` (Video 12 sofort hochladen).
 
-### 6. Automatisch beim Hochfahren starten
+### 6. Jarvis und das Team ansehen – am PC und auf dem Handy
+
+- **Am PC:** im Browser **http://localhost:8787** öffnen (ohne Passwort).
+- **Auf dem Handy:** Beim Start schickt dir Jarvis per SMS den Link (`https://….trycloudflare.com`).
+  Öffnen, Passwort eingeben – du bleibst 30 Tage angemeldet. Tipp: im Browser „Zum Startbildschirm hinzufügen“.
+- Das Passwort legst du in `content-crew setup` fest. Ohne Passwort erzeugt Jarvis beim Start eines und schickt es dir einmalig mit.
+- Der Link ändert sich bei jedem Neustart – Jarvis schickt dir dann den neuen.
+- Nach 10 falschen Passwörtern ist die Anmeldung 15 Minuten gesperrt.
+
+Du siehst dort, woran jeder Arbeiter gerade arbeitet, alle Videos mit Player, was Jarvis gelernt hat und alle
+Nachrichten an dich. Du kannst Jarvis Anweisungen geben, ihn pausieren und Videos freigeben oder verwerfen.
+
+### 7. Automatisch beim Hochfahren starten
 
 **Linux / macOS / WSL mit systemd:**
 ```bash

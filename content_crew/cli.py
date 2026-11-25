@@ -90,6 +90,15 @@ def cmd_cycle(args) -> None:
 
 def _start_services(cfg: Config, db: DB, boss, port: int):
     """Webhook-/Medien-Server starten und – falls nötig – den öffentlichen Tunnel."""
+    new_password = ""
+    if not cfg.env("DASHBOARD_PASSWORD"):
+        import secrets
+
+        from content_crew.envfile import set_env_values
+
+        new_password = secrets.token_urlsafe(9)
+        set_env_values({"DASHBOARD_PASSWORD": new_password})
+        print(f"Passwort für die Übersicht (Handy): {new_password}  – gespeichert in .env")
     threading.Thread(target=_serve, args=(cfg, db, port), daemon=True).start()
     if cfg.dry_run or cfg["notify"].get("public_base_url") or cfg["notify"].get("tunnel", "auto") == "off":
         return None
@@ -100,6 +109,12 @@ def _start_services(cfg: Config, db: DB, boss, port: int):
     if url:
         cfg["notify"]["public_base_url"] = url
         boss.notifier.configure_webhook(url)
+        text = f"Deine Jarvis-Übersicht fürs Handy: {url}"
+        if new_password:
+            text += f" – Passwort: {new_password} (ändern mit content-crew setup)"
+        boss.notifier.sms(text, "link")
+        print(f"Übersicht fürs Handy: {url}")
+    print(f"Übersicht am PC: http://localhost:{port}")
     return tunnel
 
 

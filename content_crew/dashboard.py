@@ -32,6 +32,8 @@ CSS = """
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);
 font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
 main{max-width:1100px;margin:0 auto;padding:24px 16px 48px}
+@media (max-width:600px){h1{font-size:19px}.videos{grid-template-columns:repeat(2,1fr)}
+.msg{flex-direction:column;gap:2px}.msg .k{min-width:0}button{padding:10px 16px}}
 h1{font-size:22px;margin:0}h2{font-size:15px;margin:32px 0 12px;color:var(--muted);font-weight:600;
 text-transform:uppercase;letter-spacing:.04em}
 .top{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
@@ -138,7 +140,8 @@ def render(cfg: Config, db: DB) -> str:
 <p class="sub">{e(cfg["niche"])} · {e(mode)} · Modell {e(cfg["llm"]["model"])} · letzte Runde {_ago(last)}
 {f"· nächste in {next_in} Min." if next_in is not None and not paused else ""}</p>
 <p class="sub">{e(status_text(db))}</p></div>
-<div class="actions">{_cmd("START", "Weiter", True) if paused else _cmd("STOP", "Pausieren")}</div></div>
+<div class="actions">{_cmd("START", "Weiter", True) if paused else _cmd("STOP", "Pausieren")}
+<form method="post" action="/logout"><button>Abmelden</button></form></div></div>
 
 <h2>Team</h2><div class="grid" id="team">{"".join(team)}</div>
 
@@ -157,6 +160,27 @@ placeholder="z. B. Mach mehr Videos über Ernährung, weniger über Sport"><butt
 
 <h2>Nachrichten an dich</h2><div class="card" id="msgs">{msg_html}</div>
 </main><script>{REFRESH_JS}</script></body></html>"""
+
+
+def render_login(error: str = "", configured: bool = True) -> str:
+    messages = {
+        "falsch": "Falsches Passwort.",
+        "gesperrt": "Zu viele Fehlversuche. Bitte in 15 Minuten erneut versuchen.",
+    }
+    if not configured:
+        body = ('<p>Für den Zugriff vom Handy ist noch kein Passwort gesetzt. Führe auf deinem PC '
+                '<code>content-crew setup</code> aus oder starte Jarvis neu – dann bekommst du eines per SMS.</p>')
+    else:
+        err = f'<p class="err">{escape(messages[error])}</p>' if error in messages else ""
+        body = (err + '<form method="post" action="/login" class="say"><input type="password" name="password" required '
+                'autocomplete="current-password" placeholder="Passwort" autofocus>'
+                '<button class="primary">Anmelden</button></form>')
+    return f"""<!doctype html><html lang="de"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Jarvis Anmeldung</title>
+<style>{CSS}.err{{color:var(--bad)}}input[type=password]{{font:inherit;padding:10px 12px;border-radius:8px;
+border:1px solid var(--line);background:var(--card);color:var(--text);flex:1;min-width:200px}}</style></head>
+<body><main style="max-width:420px;padding-top:15vh"><div class="card"><h1>Jarvis</h1>
+<p class="sub">Melde dich an, um dein Team zu sehen.</p>{body}</div></main></body></html>"""
 
 
 def _cmd(command: str, label: str, primary: bool = False) -> str:
