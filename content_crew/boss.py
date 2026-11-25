@@ -174,7 +174,7 @@ class Boss:
         act("writer", f"Konzept fertig: „{concept['title']}“ ({concept['label']})")
         act("jarvis", f"prüft das Konzept „{concept['title']}“")
         verdict = self.review_animation(concept, recent)
-        for attempt in range(int(bcfg["max_revisions"])):
+        for attempt in range(int(bcfg.get("animation_revisions", 1))):
             if verdict["score"] >= bcfg["min_script_score"]:
                 break
             log.info("Chef: Konzept %.0f/10 – zurück an den Designer (%d)", verdict["score"], attempt + 1)

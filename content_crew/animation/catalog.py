@@ -58,6 +58,26 @@ TYPES: dict[str, dict] = {
         "caption": "Warte, bis sich alle treffen 🤯 Hast du bis zum Ende geschaut?",
         "tags": ["#satisfying", "#polyrhythm", "#hypnotic", "#animation", "#relaxing"],
     },
+    "galton": {
+        "label": "Galton-Brett",
+        "query": "galton board satisfying simulation",
+        "idee": "Hunderte bunte Kugeln fallen durch ein Dreieck aus Nägeln in Fächer. Jede landende Kugel spielt "
+                "einen Ton, die Fächer füllen sich in Farbschichten – am Ende entsteht von selbst eine perfekte "
+                "Glockenkurve, die aufleuchtet.",
+        "params": {"rows": (8, 14, 12), "balls": (120, 400, 220)},
+        "caption": "In welchem Fach landen die meisten Kugeln? 🎯 Tipp jetzt!",
+        "tags": ["#satisfying", "#galtonboard", "#physics", "#math", "#animation"],
+    },
+    "spin_arena": {
+        "label": "Dreh-Arena",
+        "query": "balls spinning hexagon last one wins",
+        "idee": "Nummerierte Bälle springen in einem sich drehenden Vieleck (z. B. Sechseck) mit einer offenen "
+                "Seite. Einer nach dem anderen fliegt hinaus – die Zahl oben zählt herunter. Welche Nummer bleibt "
+                "als Letzte übrig? Der Sieger wird groß gefeiert.",
+        "params": {"sides": (3, 8, 6), "balls": (6, 16, 10), "spin": (0.4, 1.6, 0.9), "gravity": (0.6, 1.5, 1.0)},
+        "caption": "Welche Nummer bleibt als Letzte drin? 👀 Schreib deinen Tipp in die Kommentare!",
+        "tags": ["#satisfying", "#simulation", "#physics", "#hexagon", "#animation"],
+    },
 }
 
 MELODY_LABELS = {
@@ -70,9 +90,9 @@ SCALE_LABELS = {"pentatonic": "freie Melodie (pentatonisch)", "major": "freie Me
                 "minor": "freie Melodie (Moll)", "dreamy": "freie Melodie (verträumt)",
                 "japanese": "freie Melodie (japanisch)"}
 # Bei diesen Arten spielt jeder Punkt/jedes Team eigene Töne – eine Melodie passt dort nicht.
-SCALE_ONLY = {"polyrhythm", "color_wars"}
+SCALE_ONLY = {"polyrhythm", "color_wars", "galton"}
 DEFAULT_SOUND = {"ring_escape": "bell", "escape_multiply": "glass", "growing_ball": "pluck",
-                 "color_wars": "marimba", "polyrhythm": "glass"}
+                 "color_wars": "marimba", "polyrhythm": "glass", "galton": "kalimba", "spin_arena": "bell"}
 
 
 def type_for(text: str) -> str | None:

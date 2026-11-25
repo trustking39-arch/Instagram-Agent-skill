@@ -19,6 +19,7 @@ DEFAULTS: dict[str, Any] = {
         "cycle_minutes": 240,
         "min_script_score": 7,
         "max_revisions": 2,
+        "animation_revisions": 1,  # bei Animationen reicht eine Überarbeitung: die Bildqualität liefert die Engine
         "auto_publish": True,
     },
     "virality": {"viral_multiplier": 3.0, "viral_min_views": 10000},

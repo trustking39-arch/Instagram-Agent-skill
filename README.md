@@ -38,6 +38,8 @@ Instagram Reels und TikTok machen – und er meldet sich per **SMS oder Anruf** 
 | **Wachsender Ball** (`growing_ball`) | Ball wird bei jedem Aufprall größer und malt ein Muster | Wann ist der Kreis voll? |
 | **Farben-Krieg** (`color_wars`) | 2 oder 4 Teams erobern Felder (Pong-Wars-Prinzip) | Wer hat am Ende die meiste Fläche? |
 | **Polyrhythmus** (`polyrhythm`) | Punkte auf Bögen, Welle oder Umlaufbahnen, jeder mit eigenem Ton | Countdown, bis sich alle treffen |
+| **Galton-Brett** (`galton`) | Hunderte Kugeln fallen durch Nägel und bilden eine Glockenkurve | In welchem Fach landen die meisten? |
+| **Dreh-Arena** (`spin_arena`) | Nummerierte Bälle in einem rotierenden Vieleck mit offener Seite | Welche Nummer bleibt als Letzte drin? |
 
 Jeder Aufprall spielt einen Ton – auf Wunsch Note für Note eine **gemeinfreie Melodie** (Für Elise, Ode an die
 Freude, Bergkönig, Kanon in D, Jingle Bells, Stille Nacht …), damit TikTok den Ton nicht sperrt. Der Höhepunkt wird
@@ -179,6 +181,7 @@ Programm `wsl.exe`, Argumente `-d Ubuntu-24.04 -- true`. Energieoptionen: Ruhezu
 | `boss.videos_per_cycle`, `boss.cycle_minutes` | Wie viele Videos wie oft |
 | `boss.min_script_score` | Mindestnote, sonst muss der Designer nachbessern |
 | `video.style` | `animation` (Standard) oder `slides` (alte Text-Videos) |
+| `boss.animation_revisions` | Wie oft der Designer ein Konzept überarbeiten muss (Standard 1) |
 | `animation.fps`, `animation.preset` | 60 Bilder/s; `veryfast` rendert schneller, `medium` gibt kleinere Dateien |
 | `boss.auto_publish` | `false` = Jarvis fragt dich vor jedem Upload per SMS |
 | `virality.*` | Ab wann ein Video als viral gilt (dann ruft Jarvis an) |
