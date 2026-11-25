@@ -9,6 +9,8 @@ fertigen Videos unter /media/<datei> bereit. Mach ihn über einen Tunnel
 import logging
 from xml.sax.saxutils import escape
 
+from fastapi import FastAPI, HTTPException, Request
+
 from content_crew.commands import handle_owner_message
 from content_crew.config import Config
 from content_crew.db import DB
@@ -17,8 +19,9 @@ log = logging.getLogger(__name__)
 
 
 def create_app(cfg: Config, db: DB):
-    from fastapi import FastAPI, HTTPException, Request
-    from fastapi.responses import FileResponse, Response
+    from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
+
+    from content_crew.dashboard import render as render_dashboard
 
     app = FastAPI(title="Content Crew Webhooks")
     owner = cfg.env("OWNER_PHONE_NUMBER")
@@ -67,5 +70,26 @@ def create_app(cfg: Config, db: DB):
     @app.get("/health")
     def health():
         return {"ok": True}
+
+    # --- Übersichtsseite: nur direkt auf deinem PC, nie über den öffentlichen Tunnel ---
+    def local_only(request: Request) -> None:
+        via_tunnel = any(h in request.headers for h in ("cf-connecting-ip", "cf-ray", "x-forwarded-for"))
+        client = request.client.host if request.client else ""
+        if via_tunnel or client not in ("127.0.0.1", "::1", "localhost", "testclient"):
+            raise HTTPException(status_code=404)
+
+    @app.get("/", response_class=HTMLResponse)
+    def dashboard(request: Request):
+        local_only(request)
+        return HTMLResponse(render_dashboard(cfg, db))
+
+    @app.post("/dashboard/cmd")
+    async def dashboard_cmd(request: Request):
+        local_only(request)
+        form = dict(await request.form())
+        text = str(form.get("text", "")).strip()
+        if text:
+            handle_owner_message(db, text, channel="dashboard")
+        return RedirectResponse("/", status_code=303)
 
     return app

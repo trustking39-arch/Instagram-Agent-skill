@@ -114,15 +114,24 @@ class Boss:
 
     def create_video(self, idea: dict, insights: dict, learnings: list[str]) -> int | None:
         bcfg = self.cfg["boss"]
+        act = self.db.set_activity
         brief = idea["idea"] + (f"\nAnweisung vom Chef: {idea['instructions']}" if idea.get("instructions") else "")
+        act("writer", f"schreibt: {idea['idea'][:80]}")
         script = self.writer.write(brief, insights, learnings)
+        act("writer", f"Entwurf fertig: „{script['title']}“")
+        act("jarvis", f"bewertet „{script['title']}“")
         verdict = self.review(script)
         for attempt in range(int(bcfg["max_revisions"])):
             if verdict["score"] >= bcfg["min_script_score"]:
                 break
             log.info("Chef: Skript %.0f/10 – zurück an den Autor (%d)", verdict["score"], attempt + 1)
+            act("jarvis", f"Note {verdict['score']:.0f}/10 – schickt das Skript zurück: {verdict['feedback'][:120]}")
+            act("writer", f"bessert nach (Versuch {attempt + 2})")
             script = self.writer.write(brief, insights, learnings, previous=script, feedback=verdict["feedback"])
+            act("writer", f"Überarbeitung fertig: „{script['title']}“")
             verdict = self.review(script)
+        act("jarvis", f"Note {verdict['score']:.0f}/10 für „{script['title']}“")
+        act("writer", "wartet")
         video_id = self.db.add_video(idea["idea"], script, verdict["score"])
         if verdict["score"] < bcfg["min_script_score"]:
             self.db.update_video(video_id, status="rejected")
@@ -130,8 +139,11 @@ class Boss:
             log.info("Chef: Skript %d verworfen (Score %.0f)", video_id, verdict["score"])
             return None
         try:
+            act("producer", f"schneidet Video #{video_id} ({len(script['scenes'])} Szenen)")
             path = self._producer().produce(script, video_id)
+            act("producer", f"Video #{video_id} fertig")
         except Exception as exc:  # noqa: BLE001
+            act("producer", f"Fehler bei Video #{video_id}")
             self.db.update_video(video_id, status="failed")
             self.notifier.notify("error", f"Video {video_id} konnte nicht erstellt werden: {exc}"[:300])
             log.exception("Videoproduktion fehlgeschlagen")
@@ -154,7 +166,10 @@ class Boss:
             return
         from pathlib import Path
 
+        self.db.set_activity("publisher", f"lädt Video #{video_id} hoch")
         ids, errors = self.publisher.publish(Path(video["path"]), video["script"])
+        self.db.set_activity("publisher", f"Video #{video_id}: {', '.join(ids) or 'keine Plattform'}"
+                             + (" (Testmodus)" if self.cfg.dry_run else ""))
         self.report_errors(errors, f"Upload von Video {video_id}")
         if ids:
             self.db.update_video(video_id, status="published", platform_ids={**video["platform_ids"], **ids})
@@ -193,7 +208,11 @@ class Boss:
             log.info("Jarvis ist pausiert (Besitzer hat STOP geschickt).")
             return []
 
+        act = self.db.set_activity
+        act("jarvis", "leitet eine neue Runde")
+        act("analyst", "holt Aufrufe, Likes und Kommentare")
         hits, errors = self.analyst.refresh()
+        act("analyst", f"fertig – {len(hits)} neue virale Videos")
         self.report_errors(errors, "Statistiken")
         for hit in hits:
             self.notifier.notify(
@@ -201,14 +220,19 @@ class Boss:
                 f"Gute Nachrichten! Dein Video \"{hit['title']}\" geht auf {hit['platform']} viral: "
                 f"{hit['views']} Aufrufe.",
             )
+        act("jarvis", "wertet die Zahlen aus und lernt daraus")
         self.learn()
 
+        act("scout", f"sucht Trends zu „{self.cfg['niche']}“")
         insights = self.scout.run(self.cfg["niche"])
+        act("scout", f"fertig – {insights.get('sample_size', 0)} Videos analysiert")
+        act("jarvis", "plant die nächsten Videos")
         self.report_errors([PlatformError(e, blocked=True) for e in insights.get("_blocked", [])], "Trend-Analyse")
         learnings = self.db.notes("learning", 10)
         plan = self.plan(insights, learnings, instructions, int(self.cfg["boss"]["videos_per_cycle"]))
-        question = (plan.get("question_for_owner") or "").strip()
-        if question:
+        question = plan.get("question_for_owner")
+        question = question.strip() if isinstance(question, str) else ""
+        if len(question) > 3:
             self.notifier.notify("question", f"Frage von Jarvis: {question}", ask=True)
 
         created = []
@@ -217,6 +241,7 @@ class Boss:
             if vid:
                 created.append(vid)
         self.db.set_state("last_cycle", str(time.time()))
+        act("jarvis", f"Runde fertig – {len(created)} Video(s). Wartet auf die nächste Runde")
         return created
 
     def run_forever(self) -> None:

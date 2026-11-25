@@ -14,9 +14,12 @@ HELP = (
 
 def status_text(db: DB) -> str:
     vids = db.videos(limit=200)
+    labels = {"draft": "Entwurf", "produced": "fertig", "awaiting_approval": "warten auf Freigabe",
+              "published": "veröffentlicht", "rejected": "verworfen", "failed": "Fehler"}
     counts: dict[str, int] = {}
     for v in vids:
-        counts[v["status"]] = counts.get(v["status"], 0) + 1
+        label = labels.get(v["status"], v["status"])
+        counts[label] = counts.get(label, 0) + 1
     metrics = db.latest_metrics()
     total_views = sum(m["views"] or 0 for m in metrics)
     state = "PAUSIERT" if db.paused else "aktiv"

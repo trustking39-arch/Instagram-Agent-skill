@@ -170,6 +170,24 @@ def test_webhook_rejects_strangers_and_accepts_owner(cfg, db, monkeypatch):
     json.dumps(r.text)
 
 
+def test_dashboard_shows_team_and_is_local_only(cfg, db, monkeypatch):
+    pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient
+
+    from content_crew.webhooks import create_app
+
+    db.add_video("Idee", {"title": "Mein <Test> Video", "scenes": []}, 8, status="awaiting_approval")
+    db.set_activity("writer", "schreibt gerade")
+    client = TestClient(create_app(cfg, db))
+    page = client.get("/").text
+    assert "Skript-Autor" in page and "schreibt gerade" in page
+    assert "Mein &lt;Test&gt; Video" in page and "Hochladen" in page
+    assert client.get("/", headers={"cf-connecting-ip": "1.2.3.4"}).status_code == 404
+    r = client.post("/dashboard/cmd", data={"text": "STOP"}, follow_redirects=False)
+    assert r.status_code == 303 and db.paused
+    assert client.post("/dashboard/cmd", data={"text": "START"}, headers={"x-forwarded-for": "1.2.3.4"}).status_code == 404
+
+
 def test_webhook_rejects_everyone_without_owner_number(cfg, db, monkeypatch):
     pytest.importorskip("fastapi")
     from fastapi.testclient import TestClient

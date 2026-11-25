@@ -72,6 +72,14 @@ class DB:
         self.conn.execute("INSERT OR REPLACE INTO state(key, value) VALUES (?, ?)", (key, value))
         self.conn.commit()
 
+    def set_activity(self, worker: str, text: str) -> None:
+        """Was ein Arbeiter gerade tut (für die Übersichtsseite)."""
+        self.set_state(f"worker:{worker}", json.dumps({"text": text, "ts": time.time()}, ensure_ascii=False))
+
+    def activity(self, worker: str) -> dict:
+        raw = self.get_state(f"worker:{worker}")
+        return json.loads(raw) if raw else {"text": "wartet", "ts": 0}
+
     @property
     def paused(self) -> bool:
         return self.get_state("paused") == "1"
