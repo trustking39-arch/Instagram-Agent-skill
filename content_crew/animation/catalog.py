@@ -117,6 +117,80 @@ DEFAULT_SOUND = {"ring_escape": "bell", "escape_multiply": "glass", "growing_bal
                  "string_art": "glass"}
 
 
+# --- Texte: saubere, abwechslungsreiche Vorlagen (das kleine Sprachmodell schreibt oft holpriges Deutsch) ---
+SONGS = {"fur_elise": "Für Elise", "ode_to_joy": "Ode an die Freude", "mountain_king": "In der Halle des Bergkönigs",
+         "canon": "Kanon in D", "twinkle": "Morgen kommt der Weihnachtsmann", "greensleeves": "Greensleeves",
+         "jingle_bells": "Jingle Bells", "silent_night": "Stille Nacht"}
+XMAS = {"jingle_bells", "silent_night", "twinkle"}
+CAPTIONS: dict[str, list[str]] = {
+    "ring_escape": [
+        "Schafft er alle {rings} Ringe? 😳 Schreib deine Schätzung in die Kommentare!",
+        "{rings} Ringe, ein Ball – bei welchem Ring wird es knapp? 👀",
+        "Wie lange braucht er für alle {rings} Ringe? ⏱️ Tipp jetzt!",
+        "Jede Lücke kostet einen Ring 😮 Schafft er alle {rings}?",
+    ],
+    "escape_multiply": [
+        "Jeder Ball, der entkommt, wird zu zwei 🤯 Bei welcher Zahl platzt der Ring?",
+        "Aus 1 werden {max_balls} 😳 Wie lange hält der Ring durch?",
+        "Ein Ball reicht für totales Chaos 🤯 Wann platzt der Ring? Tipp jetzt!",
+    ],
+    "growing_ball": [
+        "Jeder Aufprall macht ihn größer und spielt die nächste Note 🎶 Erkennst du das Lied?",
+        "Wie viele Aufpralle, bis der Kreis voll ist? 🤔 Schreib deine Zahl!",
+        "Er wächst mit jedem Ton 🎶 Bei welcher Note ist Schluss?",
+    ],
+    "color_wars": [
+        "Welche Farbe hat am Ende mehr Fläche? 👀 Wähl dein Team in den Kommentaren!",
+        "Wer erobert das Feld? 🏆 Schreib deine Farbe in die Kommentare!",
+        "Mal führt die eine Farbe, mal die andere – wer gewinnt am Ende? 👀 Wähl dein Team!",
+    ],
+    "polyrhythm": [
+        "{dots} Punkte, jeder in seinem eigenen Takt – warte, bis sich alle treffen 🤯",
+        "Bleib bis zum Ende: Dann treffen sich alle {dots} Punkte gleichzeitig 🎶",
+        "Jeder Punkt spielt seinen eigenen Ton 🌀 Hast du bis zum Schluss geschaut?",
+    ],
+    "galton": [
+        "In welchem Fach landen die meisten Kugeln? 🎯 Tipp jetzt, bevor die Kurve erscheint!",
+        "{balls} Kugeln, reiner Zufall – und trotzdem entsteht eine perfekte Kurve 🤯",
+        "Zufall oder Muster? 🤔 Schau, was {balls} Kugeln am Ende zeichnen",
+    ],
+    "spin_arena": [
+        "Welche Nummer bleibt als Letzte im {shape}? 👀 Schreib deinen Tipp in die Kommentare!",
+        "{balls} Bälle, ein drehendes {shape} – wer bleibt übrig? 🏆",
+        "Wähl deine Nummer von 1 bis {balls} 👇 Bleibt sie bis zum Schluss drin?",
+    ],
+    "string_art": [
+        "Jeder Aufprall spannt einen neuen Faden 🕸️ Wie sieht es am Ende aus?",
+        "{points} Fäden, ein Ball – schau, welches Muster entsteht ✨",
+        "Aus Chaos wird Kunst: Jeder Aufprall ein Faden 🎶 Bleib bis zum Ende!",
+    ],
+}
+SONG_QUESTION = {"ring_escape": "Schafft er alle {rings} Ringe?", "escape_multiply": "Wann platzt der Ring?",
+                 "growing_ball": "Wie groß wird er?", "spin_arena": "Welche Nummer bleibt übrig?",
+                 "string_art": "Wie sieht das Netz am Ende aus?"}
+TITLES = {
+    "ring_escape": "Ring-Flucht: {rings} Ringe", "escape_multiply": "Ball-Vermehrung bis {max_balls}",
+    "growing_ball": "Wachsender Ball", "color_wars": "Farben-Krieg mit {teams} Teams",
+    "polyrhythm": "Polyrhythmus mit {dots} Punkten", "galton": "Galton-Brett mit {balls} Kugeln",
+    "spin_arena": "Dreh-Arena: {balls} Bälle im {shape}", "string_art": "Faden-Netz mit {points} Fäden",
+}
+
+
+def make_text(kind: str, params: dict, music: str | None, seed: int) -> tuple[str, str]:
+    """Titel und Caption aus den Vorlagen – passend zu Art, Einstellungen und Melodie."""
+    rng = random.Random(seed * 31 + 7)
+    values = {**params, "shape": SHAPES.get(int(params.get("sides", 6) or 6), "Vieleck")}
+    song = SONGS.get(music or "")
+    if song and kind in SONG_QUESTION and rng.random() < 0.45:
+        tree = " 🎄" if music in XMAS else ""
+        event = "Jede Flucht spielt" if kind == "escape_multiply" else "Jeder Aufprall spielt"
+        caption = f"Hörst du es? 🎶 {event} die nächste Note von „{song}“. {SONG_QUESTION[kind]}{tree}"
+    else:
+        caption = rng.choice(CAPTIONS[kind])
+    title = TITLES[kind] + (f" – {song}" if song and kind in SONG_QUESTION else "")
+    return title.format(**values), caption.format(**values)
+
+
 def type_for(text: str) -> str | None:
     """Animationsart aus einem Namen oder einer Nischen-Bezeichnung erkennen."""
     low = (text or "").lower()
@@ -193,7 +267,7 @@ def pick_hashtags(suggested, kind: str, music: str | None) -> list[str]:
 
 
 def normalize_concept(raw: dict | None, force_type: str | None = None, rng: random.Random | None = None,
-                      randomize: bool = False) -> dict:
+                      randomize: bool = False, ki_text: bool = False) -> dict:
     """Konzept vom KI-Designer prüfen: unbekannte Werte ersetzen, Zahlen begrenzen, Texte auffüllen."""
     rng = rng or random.Random()
     raw = raw if isinstance(raw, dict) else {}
@@ -226,8 +300,8 @@ def normalize_concept(raw: dict | None, force_type: str | None = None, rng: rand
 
     caption = re.sub(r"\s*#[\w\u00c0-\u017f]+", "", str(raw.get("caption") or "")).strip()  # Hashtags kommen separat
     title = str(raw.get("title") or "").strip()
-    if _foreign_text(kind, f"{title} {caption}") or "NEUE" in caption or "NEUER" in title:
-        caption, title = "", ""  # abgeschrieben oder für eine andere Animation gedacht
+    if not ki_text or _foreign_text(kind, f"{title} {caption}") or "NEUE" in caption or "NEUER" in title:
+        title, caption = make_text(kind, params, music, seed)  # sauberes Deutsch aus den Vorlagen
     caption = caption or spec["caption"].format(**params)
     title = title or caption.split("?")[0][:80]
     if kind == "spin_arena":  # die Form im Text muss zur Animation passen (7 Seiten = Siebeneck)

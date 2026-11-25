@@ -39,7 +39,7 @@ class Boss:
         self.writer = ScriptWriter(llm, cfg.get("language", "de"))
         self.producer = producer
         self.style = cfg["video"].get("style", "animation")
-        self.designer = AnimationDesigner(llm)
+        self.designer = AnimationDesigner(llm, ki_text=bool(cfg.get("animation", {}).get("ki_captions", False)))
         self.animator: Animator | None = None
         self.publisher = Publisher(cfg, self.platforms)
         self.analyst = Analyst(cfg, db, self.platforms)

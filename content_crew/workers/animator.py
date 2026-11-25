@@ -38,8 +38,9 @@ def example_format(kind: str | None) -> str:
 class AnimationDesigner:
     """Entwirft mit dem Sprachmodell ein Konzept aus dem Katalog des Animators."""
 
-    def __init__(self, llm: LLM):
+    def __init__(self, llm: LLM, ki_text: bool = False):
         self.llm = llm
+        self.ki_text = ki_text  # False = Titel/Caption aus geprüften Vorlagen statt vom kleinen Modell
 
     def design(self, idea: str, insights: dict, learnings: list[str], kind: str | None = None,
                previous: dict | None = None, feedback: str = "", recent: list[str] | None = None) -> dict:
@@ -67,7 +68,7 @@ class AnimationDesigner:
             raw = {}
         if isinstance(raw, list):
             raw = raw[0] if raw and isinstance(raw[0], dict) else {}
-        return normalize_concept(raw, force_type=kind)
+        return normalize_concept(raw, force_type=kind, ki_text=self.ki_text)
 
 
 class Animator:

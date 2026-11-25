@@ -146,8 +146,11 @@ def test_copied_or_foreign_caption_is_replaced():
                           force_type="polyrhythm")
     assert "Ringe" not in c["caption"] and c["title"] != "Ring-Flucht"
     own = normalize_concept({"title": "Goldene Kugel", "caption": "Ganz einfach – erkennst du das Lied? 🎶"},
-                            force_type="growing_ball")
+                            force_type="growing_ball", ki_text=True)
     assert own["caption"].startswith("Ganz einfach")
+    tpl = normalize_concept({"caption": "Schafft es der Ring 150 entkommen?", "params": {"sides": 7}},
+                            force_type="spin_arena")  # Standard: geprüfte Vorlagen statt KI-Deutsch
+    assert "entkommen" not in tpl["caption"] and "Siebeneck" in tpl["title"]
 
 
 def test_polyrhythm_differs_between_videos():

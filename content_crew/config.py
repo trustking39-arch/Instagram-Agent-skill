@@ -39,7 +39,8 @@ DEFAULTS: dict[str, Any] = {
         "font": "",
         "background_dir": "",
     },
-    "animation": {"fps": 60, "bloom": 0.6, "crf": 18, "preset": "medium"},
+    # ki_captions: true = Titel/Caption schreibt das Sprachmodell (erst ab einem großen Modell sinnvoll)
+    "animation": {"fps": 60, "bloom": 0.6, "crf": 18, "preset": "medium", "ki_captions": False},
     "data_dir": "./data",
     "dry_run": False,
 }
