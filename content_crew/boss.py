@@ -98,7 +98,9 @@ class Boss:
         result = self.llm.chat_json(
             BOSS_SYSTEM,
             "Bewerte dieses Kurzvideo-Skript streng von 1 bis 10 (Hook, Tempo, Mehrwert, Viral-Potenzial, "
-            "Call-to-Action). Gib konkrete Verbesserungen an.\n"
+            "Call-to-Action). Gib konkrete Verbesserungen an. Enthält das Skript Heilversprechen, medizinische "
+            "Behauptungen, Finanz-/Erfolgsgarantien oder irreführende Aussagen, ist der Score höchstens 3 – "
+            "solche Videos verstoßen gegen die Plattform-Regeln.\n"
             f"{json.dumps(script, ensure_ascii=False)}\n"
             'JSON: {"score": 7, "feedback": "konkrete Verbesserungen"}',
             temperature=0.2,
