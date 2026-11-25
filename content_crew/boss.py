@@ -268,6 +268,7 @@ class Boss:
                 log.info("Durchlauf fertig, %d Video(s) erstellt.", len(created))
             except Exception as exc:  # noqa: BLE001
                 log.exception("Durchlauf fehlgeschlagen")
+                self.db.set_activity("jarvis", f"Runde abgebrochen: {exc}"[:200])
                 self.notifier.notify("error", f"Jarvis-Durchlauf fehlgeschlagen: {exc}"[:300])
             deadline = time.time() + minutes * 60
             while time.time() < deadline:  # zwischendurch Freigaben/Befehle verarbeiten

@@ -11,6 +11,22 @@ import requests
 
 log = logging.getLogger(__name__)
 
+ANSWER_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "antwort",
+        "description": "Gib hier deine vollständige Antwort zurück.",
+        "parameters": {
+            "type": "object",
+            "properties": {"antwort": {
+                "type": "string",
+                "description": "deine vollständige Antwort (bei JSON-Aufgaben das JSON als Text)",
+            }},
+            "required": ["antwort"],
+        },
+    },
+}
+
 
 def extract_json(text: str) -> Any:
     """Erstes gültiges JSON-Objekt/-Array aus einer Modellantwort holen."""
@@ -33,23 +49,42 @@ class LLM:
         self.model = cfg["model"]
         self.timeout = int(cfg.get("timeout_seconds", 600))
         self.api_key = api_key or "none"
+        self.direct = bool(cfg.get("direct", True))
 
     def chat(self, system: str, user: str, temperature: float = 0.7) -> str:
+        body = {
+            "model": self.model,
+            "temperature": temperature,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+        }
+        if self.direct:
+            # Mit eigener Werkzeugliste antwortet der OpenJarvis-Server direkt mit dem Modell,
+            # statt erst seinen Agenten (inkl. Websuche) laufen zu lassen. Das ist für klar
+            # umrissene Team-Aufgaben schneller und verlässlicher.
+            body["tools"] = [ANSWER_TOOL]
         resp = requests.post(
             f"{self.base_url}/chat/completions",
             headers={"Authorization": f"Bearer {self.api_key}"},
-            json={
-                "model": self.model,
-                "temperature": temperature,
-                "messages": [
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": user},
-                ],
-            },
+            json=body,
             timeout=self.timeout,
         )
         resp.raise_for_status()
-        content = resp.json()["choices"][0]["message"]["content"] or ""
+        message = resp.json()["choices"][0]["message"]
+        content = message.get("content") or ""
+        for call in message.get("tool_calls") or []:
+            fn = call.get("function", {})
+            if fn.get("name") == "antwort":
+                args = fn.get("arguments") or "{}"
+                try:
+                    parsed = json.loads(args) if isinstance(args, str) else args
+                except json.JSONDecodeError:
+                    parsed = {"antwort": args}
+                value = parsed.get("antwort", parsed) if isinstance(parsed, dict) else parsed
+                content = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False)
+                break
         return re.sub(r"<think>.*?</think>", "", content, flags=re.S).strip()
 
     def chat_json(self, system: str, user: str, retries: int = 2, temperature: float = 0.5) -> Any:

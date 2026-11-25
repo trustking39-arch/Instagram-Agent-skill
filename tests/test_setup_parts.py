@@ -9,6 +9,38 @@ from content_crew.workers.stock import pick_file
 from content_crew.workers.writer import normalize_script
 
 
+def test_llm_reads_answer_tool_and_plain_content(monkeypatch):
+    from content_crew import llm as llm_mod
+
+    sent = []
+
+    class Resp:
+        def __init__(self, message):
+            self.message = message
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"choices": [{"message": self.message}]}
+
+    replies = [
+        {"content": "", "tool_calls": [{"function": {"name": "antwort",
+                                                     "arguments": '{"antwort": "{\\"ok\\": 1}"}'}}]},
+        {"content": "<think>hm</think>{\"ok\": 2}"},
+    ]
+
+    def fake_post(url, headers, json, timeout):
+        sent.append(json)
+        return Resp(replies.pop(0))
+
+    monkeypatch.setattr(llm_mod.requests, "post", fake_post)
+    client = llm_mod.LLM({"base_url": "http://x/v1", "model": "m"})
+    assert client.chat_json("sys", "user") == {"ok": 1}
+    assert sent[0]["tools"][0]["function"]["name"] == "antwort"
+    assert client.chat_json("sys", "user") == {"ok": 2}
+
+
 def test_set_env_values_keeps_other_lines(tmp_path, monkeypatch):
     env = tmp_path / ".env"
     env.write_text("# Kommentar\nA=1\nB=\n")
