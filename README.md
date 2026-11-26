@@ -41,6 +41,15 @@ Instagram Reels und TikTok machen – und er meldet sich per **SMS oder Anruf** 
 | **Galton-Brett** (`galton`) | Hunderte Kugeln fallen durch Nägel und bilden eine Glockenkurve | In welchem Fach landen die meisten? |
 | **Dreh-Arena** (`spin_arena`) | Nummerierte Bälle in einem rotierenden Vieleck mit offener Seite | Welche Nummer bleibt als Letzte drin? |
 
+**Story-Videos (auf Wunsch):** „24 Stunden bei den Dinos“ – ein leuchtendes Skelett reist durchs Zeitportal
+(Silhouetten-Stil, Tageszeiten, T-Rex-Jagd, Gewitter, Lagerfeuer). Mit `ending: haustier` hängt am Ende ein
+Baby-T-Rex am Knochenarm; mit `lang: en` erzählt das Skelett auf Englisch (offline-Stimme Kokoro, Modell wird beim
+ersten Mal von GitHub geladen):
+
+```bash
+content-crew animate --type dino_trip --duration 58
+```
+
 Jeder Aufprall spielt einen Ton – auf Wunsch Note für Note eine **gemeinfreie Melodie** (Für Elise, Ode an die
 Freude, Bergkönig, Kanon in D, Jingle Bells, Stille Nacht …), damit TikTok den Ton nicht sperrt. Der Höhepunkt wird
 automatisch auf die gewünschte Länge abgestimmt (die Physik wird vorab durchgerechnet). Selbst ausprobieren ohne KI:

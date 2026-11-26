@@ -214,6 +214,10 @@ class Scene:
     def finished(self) -> bool:
         return self.done_at is not None and self.t >= self.done_at + self.outro
 
+    def voiceover(self) -> list[tuple[float, str]]:
+        """Erzähltexte (Sekunde, Satz) – nur Story-Videos haben welche."""
+        return []
+
     # Ton
     def play(self, pitch: float, gain: float = 0.5, x: float | None = None, kind: str = "tone",
              accent: bool = False) -> None:
@@ -320,7 +324,7 @@ class Encoder:
 
 
 def render(concept: dict, out: Path, *, width: int = 1080, height: int = 1920, fps: int = 60,
-           bloom: float = 0.6, crf: int = 18, preset: str = "medium") -> dict:
+           bloom: float = 0.6, crf: int = 18, preset: str = "medium", tts_dir: str = "data/tts") -> dict:
     """Konzept rendern und als MP4 (mit Ton) speichern. Gibt technische Daten zurück."""
     from content_crew.animation.scenes import SCENES
 
@@ -370,8 +374,14 @@ def render(concept: dict, out: Path, *, width: int = 1080, height: int = 1920, f
             enc.close()
         duration = frames / fps
         wav = Path(tmp) / "audio.wav"
+        voice = None
+        lines = scene.voiceover()
+        if lines:
+            from content_crew.animation.voice import narration_track
+
+            voice = narration_track(lines, duration, Path(tts_dir), voice=concept.get("voice", "am_michael"))
         render_audio(scene.notes, duration, wav, instrument=concept.get("sound", "bell"),
-                     pad_root=(scene.music.root - 12) if scene.pad else None, seed=ctx.seed)
+                     pad_root=(scene.music.root - 12) if scene.pad else None, seed=ctx.seed, voice=voice)
         cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", str(silent), "-i", str(wav), "-map", "0:v", "-map", "1:a",
                "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest", "-movflags", "+faststart", str(out)]
         proc = subprocess.run(cmd, capture_output=True, text=True)

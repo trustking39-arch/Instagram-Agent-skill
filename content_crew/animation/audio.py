@@ -218,7 +218,8 @@ def _reverb(x: np.ndarray, rng: np.random.Generator, rt60: float = 1.9) -> np.nd
 
 
 def render_audio(notes: list[Note], duration: float, path: Path, instrument: str = "bell",
-                 pad_root: float | None = None, seed: int = 0, reverb: float = 0.3) -> None:
+                 pad_root: float | None = None, seed: int = 0, reverb: float = 0.3,
+                 voice: np.ndarray | None = None) -> None:
     """Noten zu einer Stereo-WAV-Datei mischen."""
     rng = np.random.default_rng(seed)
     n = max(1, int(duration * SR))
@@ -275,6 +276,14 @@ def render_audio(notes: list[Note], duration: float, path: Path, instrument: str
         right = right + reverb * _reverb(right, rng)
 
     mix = np.stack([left[:n], right[:n]], axis=1)
+    if voice is not None:  # Erzählstimme: Musik wird leiser, solange gesprochen wird
+        v = np.zeros(n, np.float32)
+        v[: min(n, len(voice))] = voice[:n]
+        win = int(0.3 * SR)
+        env = np.convolve(np.abs(v), np.ones(win) / win, mode="same")
+        env = np.clip(env / (env.max() or 1.0) * 6, 0.0, 1.0)
+        music = float(np.percentile(np.abs(mix), 99.5)) or 1.0
+        mix = mix / music * 0.5 * (1 - 0.62 * env)[:, None] + v[:, None]
     level = float(np.percentile(np.abs(mix), 99.9)) or 1.0
     mix = np.tanh(mix * (0.9 / level))  # sanfter Limiter
     fade = min(n, int(0.4 * SR))

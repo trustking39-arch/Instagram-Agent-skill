@@ -28,7 +28,7 @@ class Publisher:
         from content_crew.animation.catalog import TYPES, pick_hashtags
 
         if script.get("type") in TYPES:  # immer die aktuellen Hashtag-Regeln anwenden (3-5 gezielte Tags)
-            tags = pick_hashtags(tags, script["type"], script.get("music"))
+            tags = pick_hashtags(tags, script["type"], script.get("music"), (script.get("params") or {}).get("lang"))
         for name, platform in self.platforms.items():
             if only and name not in only:
                 continue

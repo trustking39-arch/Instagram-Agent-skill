@@ -77,7 +77,8 @@ class Boss:
         if not self.designer.ki_text:
             concept["title"], concept["caption"] = make_text(concept["type"], concept["params"], concept["music"],
                                                              concept["seed"])
-        concept["hashtags"] = pick_hashtags(concept["hashtags"], concept["type"], concept["music"])
+        concept["hashtags"] = pick_hashtags(concept["hashtags"], concept["type"], concept["music"],
+                                            concept["params"].get("lang"))
         concept["hook"] = f"{concept['label']} · {concept['music']} · Farben {concept['palette']}"
         return concept
 

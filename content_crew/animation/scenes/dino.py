@@ -37,6 +37,16 @@ BEATS = [  # (ab Stunde, Stichwort)
     (0.0, "ANKUNFT"), (1.0, "ERSTER DINO"), (4.0, "HITZE"), (6.5, "T-REX!"), (10.0, "VERSTECKT"),
     (12.5, "GEWITTER"), (15.5, "DINO-HERDE"), (18.5, "NACHT"), (22.5, "ZURÜCK"),
 ]
+BEATS_EN = [
+    (0.0, "ARRIVAL"), (1.0, "FIRST DINO"), (4.0, "HEAT"), (6.5, "T-REX!"), (10.0, "HIDING"),
+    (12.5, "STORM"), (15.5, "DINO HERD"), (18.5, "NIGHT"), (22.5, "GOING HOME"),
+]
+WORDS = {
+    "de": {"hour": "STUNDE", "title1": "24 STUNDEN", "title2": "BEI DEN DINOS", "back": "ZURÜCK", "ouch": "AUTSCH!",
+           "pet": "NEUES HAUSTIER"},
+    "en": {"hour": "HOUR", "title1": "24 HOURS", "title2": "WITH THE DINOS", "back": "BACK HOME", "ouch": "OUCH!",
+           "pet": "NEW PET"},
+}
 
 
 def _lerp(a, b, f):
@@ -79,6 +89,8 @@ class DinoTrip(Scene):
         self.fired: set[str] = set()
         self.herd = max(2, min(4, int(params.get("dinos", 3))))
         self.ending = params.get("ending", "classic")  # classic | haustier (Nachspiel in der Gegenwart)
+        self.lang = "en" if params.get("lang") == "en" else "de"  # en: englische Texte + Erzählstimme
+        self.words = WORDS[self.lang]
         self.epi_len = 12.5 if self.ending == "haustier" else 0.0
         self.story_T = max(3.0, self.target - self.epi_len)
         self.epi_start = self.story_T * 24.6 / 24
@@ -247,6 +259,34 @@ class DinoTrip(Scene):
         for x in (x0, x0 + width):
             if x < self.W and x + width > 0:
                 c.drawImage(img, x, top, skia.SamplingOptions(skia.FilterMode.kLinear), paint)
+
+    # --- Erzählung (Englisch, das Skelett erzählt selbst) -----------------------
+    def voiceover(self) -> list[tuple[float, str]]:
+        if self.lang != "en":
+            return []
+        sec = lambda h: h * self.story_T / 24  # noqa: E731
+        lines = [
+            (0.25, "What if you spent twenty-four hours with the dinosaurs? I tried it."),
+            (sec(2.6), "Hour one. A brachiosaurus. It's taller than a house!"),
+            (sec(4.3), "Hour four. It's so hot. Good thing I don't have skin."),
+            (sec(6.5), "Hour seven..."),  # danach brüllt der T-Rex – nicht drüberreden
+            (sec(7.45), "Run!"),
+            (sec(8.2), "I have never run this fast in my life."),
+            (sec(10.1), "Hour ten. I hide behind a rock and don't move a bone."),
+            (sec(12.6), "Hour thirteen. A thunderstorm... and the volcano erupts!"),
+            (sec(15.6), "Hour sixteen. A herd of triceratops walks into the sunset."),
+            (sec(18.7), "Night. I sleep by the fire... but something is watching me."),
+            (sec(22.6), "Hour twenty-three. The portal is back. Time to go home!"),
+        ]
+        if self.ending == "haustier":
+            lines += [
+                (self.epi_start + 0.3, "Twenty twenty-six. Home sweet home. Wait... what was that?"),
+                (self.epi_start + 3.75, "Ouch! He bit my arm, and he won't let go!"),
+                (self.epi_start + 7.3, "Well... I guess I have a new pet now. What should I call him?"),
+            ]
+        else:
+            lines.append((sec(23.7), "Wait... is that a baby T-Rex?"))
+        return lines
 
     # --- Ablauf ------------------------------------------------------------------
     def speed(self, hour: float) -> float:
@@ -564,13 +604,13 @@ class DinoTrip(Scene):
         W, H = self.W, self.H
         if self.t < 2.4:
             a = 1 - _phase(self.t, 1.8, 2.4)
-            text_center(c, "24 STUNDEN", W / 2, H * 0.12, W * 0.12, alpha=a, shadow=True)
-            text_center(c, "BEI DEN DINOS", W / 2, H * 0.19, W * 0.09, (255, 220, 150), a, shadow=True)
+            text_center(c, self.words["title1"], W / 2, H * 0.12, W * 0.12, alpha=a, shadow=True)
+            text_center(c, self.words["title2"], W / 2, H * 0.19, W * 0.09, (255, 220, 150), a, shadow=True)
             return
         shown = min(24, int(hour))
-        label = [t for h0, t in BEATS if hour >= h0][-1]
+        label = [t for h0, t in (BEATS_EN if self.lang == "en" else BEATS) if hour >= h0][-1]
         a = _phase(self.t, 2.4, 2.8)
-        text_center(c, f"STUNDE {shown}", W / 2, H * 0.11, W * 0.11, alpha=a, shadow=True)
+        text_center(c, f"{self.words['hour']} {shown}", W / 2, H * 0.11, W * 0.11, alpha=a, shadow=True)
         text_center(c, label, W / 2, H * 0.17, W * 0.065, (255, 220, 150), a, shadow=True)
         bar = skia.Rect(W * 0.2, H * 0.205, W * 0.2 + W * 0.6 * min(1.0, hour / 24), H * 0.205 + W * 0.012)
         c.drawRoundRect(skia.Rect(W * 0.2, H * 0.205, W * 0.8, H * 0.205 + W * 0.012), 8, 8,
@@ -839,7 +879,8 @@ class DinoTrip(Scene):
 
     def _draw_epilogue_text(self, c: skia.Canvas, e: float) -> None:
         W, H = self.W, self.H
-        label = "ZURÜCK" if e < 3.6 else "AUTSCH!" if e < 8.0 else "NEUES HAUSTIER"
+        w = self.words
+        label = w["back"] if e < 3.6 else w["ouch"] if e < 8.0 else w["pet"]
         text_center(c, "2026", W / 2, H * 0.11, W * 0.12, alpha=_smooth(e / 0.5), shadow=True)
         text_center(c, label, W / 2, H * 0.17, W * 0.07 if e >= 8.0 else W * 0.065, (255, 220, 150), 1.0, shadow=True)
 

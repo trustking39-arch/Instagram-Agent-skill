@@ -15,7 +15,8 @@ dependencies = [
 youtube = ["google-api-python-client>=2.100", "google-auth-oauthlib>=1.2"]
 twilio = ["twilio>=9.0", "fastapi>=0.110", "uvicorn>=0.29", "python-multipart>=0.0.9"]
 tts = ["edge-tts>=6.1"]
-all = ["content-crew[youtube,twilio,tts]"]
+voice = ["kokoro-onnx>=0.4", "soundfile>=0.12"]  # englische Erzählstimme für Story-Videos (offline)
+all = ["content-crew[youtube,twilio,tts,voice]"]
 dev = ["pytest>=8"]
 
 [project.scripts]

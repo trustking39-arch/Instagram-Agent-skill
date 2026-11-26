@@ -82,6 +82,7 @@ class Animator:
             "width": int(v.get("width", 1080)), "height": int(v.get("height", 1920)),
             "fps": int(a.get("fps", 60)), "bloom": float(a.get("bloom", 0.6)),
             "crf": int(a.get("crf", 18)), "preset": str(a.get("preset", "medium")),
+            "tts_dir": str(cfg.data_dir / "tts"),
         }
 
     @property

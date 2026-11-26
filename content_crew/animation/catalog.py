@@ -96,9 +96,10 @@ TYPES: dict[str, dict] = {
         "idee": "Ein leuchtendes Skelett reist 24 Stunden zu den Dinosauriern: Portal, Brachiosaurus, Hitze, "
                 "T-Rex-Verfolgung, Versteck, Gewitter mit Vulkanausbruch, Triceratops-Herde, Nacht am Lagerfeuer, "
                 "Rückkehr – und ein Baby-T-Rex springt hinterher. Silhouetten-Stil, oben nur Stunde und Stichwort.",
-        "params": {"dinos": (2, 4, 3), "ending": ["classic", "haustier"]},
+        "params": {"dinos": (2, 4, 3), "ending": ["classic", "haustier"], "lang": ["de", "en"]},
         "caption": "Was wäre, wenn du 24 Stunden bei den Dinos verbringst? 🦖 Wie lange würdest du überleben?",
         "tags": ["#dinosaurier", "#zeitreise", "#trex", "#animation", "#waswärewenn"],
+        "tags_en": ["#dinosaur", "#timetravel", "#trex", "#animation", "#whatif"],
     },
 }
 
@@ -202,6 +203,10 @@ def make_text(kind: str, params: dict, music: str | None, seed: int) -> tuple[st
     rng = random.Random(seed * 31 + 7)
     values = {**params, "shape": SHAPES.get(int(params.get("sides", 6) or 6), "Vieleck")}
     song = SONGS.get(music or "")
+    if kind == "dino_trip" and params.get("lang") == "en":
+        return ("24 Hours With The Dinosaurs", "I spent 24 hours with the dinosaurs… and one followed me home 🦖🦴 "
+                "What should I name him?" if params.get("ending") == "haustier" else
+                "What if you spent 24 hours with the dinosaurs? 🦖 How long would you survive?")
     if kind == "dino_trip" and params.get("ending") == "haustier":
         return "24 Stunden bei den Dinos – mit blindem Passagier", rng.choice(CAPTIONS["dino_trip_haustier"])
     if song and kind in SONG_QUESTION and rng.random() < 0.45:
@@ -273,9 +278,9 @@ def _music_key(value, options: list[str]) -> str | None:
     return None
 
 
-def pick_hashtags(suggested, kind: str, music: str | None) -> list[str]:
+def pick_hashtags(suggested, kind: str, music: str | None, lang: str | None = None) -> list[str]:
     """3-5 Hashtags: Nische zuerst, dann Lied/Saison, dann passende Vorschläge der KI."""
-    spec = TYPES[kind]["tags"]
+    spec = TYPES[kind].get("tags_en") if lang == "en" and TYPES[kind].get("tags_en") else TYPES[kind]["tags"]
     ki = [str(t).strip().replace(" ", "") for t in (suggested or []) if str(t).strip()]
     ki = [t if t.startswith("#") else f"#{t}" for t in ki]
     song = [MELODY_TAGS[music]] if music in MELODY_TAGS else []
@@ -331,7 +336,7 @@ def normalize_concept(raw: dict | None, force_type: str | None = None, rng: rand
     if kind == "spin_arena":  # die Form im Text muss zur Animation passen (7 Seiten = Siebeneck)
         shape = SHAPES.get(int(params.get("sides", 6)), "Vieleck")
         caption, title = (re.sub(SHAPE_WORDS, shape, t, flags=re.I) for t in (caption, title))
-    tags = pick_hashtags(raw.get("hashtags"), kind, music)
+    tags = pick_hashtags(raw.get("hashtags"), kind, music, params.get("lang"))
     music_label = MELODY_LABELS.get(music) or SCALE_LABELS.get(music, music)
     return {
         "type": kind, "label": spec["label"], "params": params, "palette": palette, "music": music,
