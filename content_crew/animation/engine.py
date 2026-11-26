@@ -60,11 +60,15 @@ def typeface() -> skia.Typeface:
 
 
 def text_center(c: skia.Canvas, text: str, x: float, y: float, size: float, rgb: RGB = WHITE,
-                alpha: float = 1.0) -> None:
+                alpha: float = 1.0, shadow: bool = False) -> None:
     """Text (nur Zahlen/Zeichen, keine Sätze) mittig zeichnen; y ist die optische Mitte."""
     font = skia.Font(typeface(), size)
     font.setEdging(skia.Font.Edging.kAntiAlias)
     width = font.measureText(text)
+    if shadow:  # weicher dunkler Schatten: lesbar auch vor hellem Himmel
+        c.drawString(text, x - width / 2, y + size * 0.36 + size * 0.04, font, skia.Paint(
+            AntiAlias=True, Color=color((0, 0, 0), 0.45 * alpha),
+            MaskFilter=skia.MaskFilter.MakeBlur(skia.kNormal_BlurStyle, size * 0.06)))
     c.drawString(text, x - width / 2, y + size * 0.36, font, skia.Paint(AntiAlias=True, Color=color(rgb, alpha)))
 
 

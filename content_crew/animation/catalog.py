@@ -89,6 +89,17 @@ TYPES: dict[str, dict] = {
         "caption": "Jeder Aufprall spannt einen neuen Faden 🕸️ Wie sieht es am Ende aus?",
         "tags": ["#satisfying", "#stringart", "#bouncingball", "#oddlysatisfying", "#simulation"],
     },
+    "dino_trip": {
+        "label": "Zeitreise zu den Dinos",
+        "story": True,  # Geschichte: nur auf Wunsch, nicht in der normalen Rotation
+        "query": "what if you time travel to dinosaurs for 24 hours",
+        "idee": "Ein leuchtendes Skelett reist 24 Stunden zu den Dinosauriern: Portal, Brachiosaurus, Hitze, "
+                "T-Rex-Verfolgung, Versteck, Gewitter mit Vulkanausbruch, Triceratops-Herde, Nacht am Lagerfeuer, "
+                "Rückkehr – und ein Baby-T-Rex springt hinterher. Silhouetten-Stil, oben nur Stunde und Stichwort.",
+        "params": {"dinos": (2, 4, 3)},
+        "caption": "Was wäre, wenn du 24 Stunden bei den Dinos verbringst? 🦖 Wie lange würdest du überleben?",
+        "tags": ["#dinosaurier", "#zeitreise", "#trex", "#animation", "#waswärewenn"],
+    },
 }
 
 MELODY_LABELS = {
@@ -111,10 +122,10 @@ LOW_VALUE_TAGS = {"#fyp", "#foryou", "#foryoupage", "#fy", "#viral", "#fürdich"
                   "#xyzbca", "#explore", "#tiktok"}
 MAX_TAGS = 5
 # Bei diesen Arten spielt jeder Punkt/jedes Team eigene Töne – eine Melodie passt dort nicht.
-SCALE_ONLY = {"polyrhythm", "color_wars", "galton"}
+SCALE_ONLY = {"polyrhythm", "color_wars", "galton", "dino_trip"}
 DEFAULT_SOUND = {"ring_escape": "bell", "escape_multiply": "glass", "growing_ball": "pluck",
                  "color_wars": "marimba", "polyrhythm": "glass", "galton": "kalimba", "spin_arena": "bell",
-                 "string_art": "glass"}
+                 "string_art": "glass", "dino_trip": "pluck"}
 
 
 # --- Texte: saubere, abwechslungsreiche Vorlagen (das kleine Sprachmodell schreibt oft holpriges Deutsch) ---
@@ -164,6 +175,11 @@ CAPTIONS: dict[str, list[str]] = {
         "{points} Fäden, ein Ball – schau, welches Muster entsteht ✨",
         "Aus Chaos wird Kunst: Jeder Aufprall ein Faden 🎶 Bleib bis zum Ende!",
     ],
+    "dino_trip": [
+        "Was wäre, wenn du 24 Stunden bei den Dinos verbringst? 🦖 Wie lange würdest du überleben?",
+        "24 Stunden in der Kreidezeit 🦖 Hättest du den T-Rex überlebt?",
+        "Zeitreise zu den Dinosauriern 🦖 Was hättest du mitgenommen?",
+    ],
 }
 SONG_QUESTION = {"ring_escape": "Schafft er alle {rings} Ringe?", "escape_multiply": "Wann platzt der Ring?",
                  "growing_ball": "Wie groß wird er?", "spin_arena": "Welche Nummer bleibt übrig?",
@@ -173,6 +189,7 @@ TITLES = {
     "growing_ball": "Wachsender Ball", "color_wars": "Farben-Krieg mit {teams} Teams",
     "polyrhythm": "Polyrhythmus mit {dots} Punkten", "galton": "Galton-Brett mit {balls} Kugeln",
     "spin_arena": "Dreh-Arena: {balls} Bälle im {shape}", "string_art": "Faden-Netz mit {points} Fäden",
+    "dino_trip": "24 Stunden bei den Dinos",
 }
 
 
@@ -221,6 +238,7 @@ FOREIGN_WORDS = {  # eindeutige Wörter, die nur zu einer Animationsart passen
     "growing_ball": ["wächst", "wachsend", "wird größer"], "color_wars": ["farbe gewinnt", "dein team", "farben-krieg"],
     "polyrhythm": ["polyrhythm", "treffen sich", "alle treffen"], "galton": ["glockenkurve", "galton"],
     "spin_arena": ["welche nummer", "dreh-arena"], "string_art": ["faden", "fäden"],
+    "dino_trip": ["dino", "zeitreise", "t-rex", "kreidezeit"],
 }
 
 

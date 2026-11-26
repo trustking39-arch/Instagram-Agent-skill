@@ -88,7 +88,8 @@ class Boss:
     def next_animation_type(self) -> str:
         """Abwechslung: die Animationsart, die am längsten nicht dran war."""
         used = [v["script"].get("type") for v in self.db.videos(limit=20)]
-        return min(TYPES, key=lambda k: (k in used, -used.index(k) if k in used else 0))
+        kinds = [k for k, spec in TYPES.items() if not spec.get("story")]  # Geschichten nur auf Wunsch
+        return min(kinds, key=lambda k: (k in used, -used.index(k) if k in used else 0))
 
     def report_errors(self, errors: list[PlatformError], context: str) -> None:
         """Blockierende Fehler (Login abgelaufen usw.) per Anruf melden, aber höchstens 1x pro Tag."""

@@ -66,7 +66,7 @@ class Note:
     pitch: float            # MIDI-Note
     gain: float = 0.5
     pan: float = 0.0        # -1 links … +1 rechts
-    kind: str = "tone"      # tone | tick | burst | boom
+    kind: str = "tone"      # tone | tick | burst | boom | roar | thunder | whoosh
     accent: bool = False    # wird bei dichten Passagen nicht leiser gemacht (Finale)
 
 
@@ -135,6 +135,41 @@ def _boom() -> np.ndarray:
     return sig.astype(np.float32)
 
 
+def _roar(rng: np.random.Generator) -> np.ndarray:
+    """Dino-Brüllen: knurrender Sägezahn mit Rauschen, leicht verzerrt."""
+    t = np.arange(int(1.9 * SR)) / SR
+    f = 92 * (1 + 0.3 * np.exp(-t / 0.35)) * (1 + 0.05 * np.sin(2 * np.pi * 7.5 * t))
+    phase = 2 * np.pi * np.cumsum(f) / SR
+    saw = sum(np.sin(k * phase) / k for k in range(1, 16))
+    noise = np.convolve(rng.standard_normal(len(t)), np.ones(6) / 6, mode="same")
+    env = np.minimum(1.0, t / 0.12) * np.exp(-np.maximum(0.0, t - 0.95) / 0.35)
+    sig = np.tanh(2.4 * (0.75 * saw / np.abs(saw).max() + 0.55 * noise / np.abs(noise).max())) * env
+    return (sig / np.abs(sig).max()).astype(np.float32)
+
+
+def _thunder(rng: np.random.Generator) -> np.ndarray:
+    """Donner: kurzer Knall, dann tiefes Grollen."""
+    t = np.arange(int(3.2 * SR)) / SR
+    n = rng.standard_normal(len(t))
+    rumble = np.convolve(n, np.ones(160) / 160, mode="same")
+    crack = np.diff(n, prepend=0.0) * np.exp(-t / 0.07)
+    env = np.exp(-t / 1.2) * (0.55 + 0.45 * np.abs(np.sin(2 * np.pi * 1.4 * t + rng.random() * 6)))
+    sig = rumble / np.abs(rumble).max() * env + 0.3 * crack / np.abs(crack).max()
+    return (sig / np.abs(sig).max()).astype(np.float32)
+
+
+def _whoosh(rng: np.random.Generator) -> np.ndarray:
+    """Zeitportal: aufsteigendes Rauschen mit Ton-Sweep."""
+    dur = 1.4
+    t = np.arange(int(dur * SR)) / SR
+    f = 160 + 1100 * (t / dur) ** 2
+    sweep = np.sin(2 * np.pi * np.cumsum(f) / SR)
+    noise = np.diff(rng.standard_normal(len(t)), prepend=0.0)
+    env = np.sin(np.pi * t / dur) ** 2
+    sig = (0.6 * sweep + 0.4 * noise / np.abs(noise).max()) * env
+    return (sig / np.abs(sig).max()).astype(np.float32)
+
+
 def _pad(duration: float, root: float, rng: np.random.Generator) -> np.ndarray:
     """Leiser Klangteppich (Grundton, Quinte, Oktave) mit langsamem Atmen."""
     n = int(duration * SR)
@@ -194,6 +229,10 @@ def render_audio(notes: list[Note], duration: float, path: Path, instrument: str
             key = ("boom",)
             if key not in cache:
                 cache[key] = _boom()
+        elif note.kind in ("roar", "thunder", "whoosh"):
+            key = (note.kind,)
+            if key not in cache:
+                cache[key] = {"roar": _roar, "thunder": _thunder, "whoosh": _whoosh}[note.kind](rng)
         else:
             inst = "marimba" if note.kind == "tick" else instrument
             key = (inst, round(note.pitch, 2))
