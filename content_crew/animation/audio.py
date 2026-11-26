@@ -66,7 +66,7 @@ class Note:
     pitch: float            # MIDI-Note
     gain: float = 0.5
     pan: float = 0.0        # -1 links … +1 rechts
-    kind: str = "tone"      # tone | tick | burst | boom | roar | thunder | whoosh
+    kind: str = "tone"      # tone | tick | burst | boom | roar | thunder | whoosh | squeak | chomp
     accent: bool = False    # wird bei dichten Passagen nicht leiser gemacht (Finale)
 
 
@@ -170,6 +170,25 @@ def _whoosh(rng: np.random.Generator) -> np.ndarray:
     return (sig / np.abs(sig).max()).astype(np.float32)
 
 
+def _squeak(rng: np.random.Generator) -> np.ndarray:
+    """Mini-Brüller eines Baby-Dinos: kurzer, hoher Quietsch-Sweep mit Zittern."""
+    dur = 0.45
+    t = np.arange(int(dur * SR)) / SR
+    f = (980 - 520 * t / dur) * (1 + 0.06 * np.sin(2 * np.pi * 28 * t))
+    phase = 2 * np.pi * np.cumsum(f) / SR
+    sig = (np.sin(phase) + 0.35 * np.sin(2 * phase) + 0.15 * np.sin(3 * phase)) * np.sin(np.pi * t / dur) ** 0.6
+    return (sig / np.abs(sig).max()).astype(np.float32)
+
+
+def _chomp(rng: np.random.Generator) -> np.ndarray:
+    """Zuschnappen: zwei harte Klicks und ein dumpfer Schlag."""
+    t = np.arange(int(0.35 * SR)) / SR
+    click = np.diff(rng.standard_normal(len(t)), prepend=0.0)
+    sig = click * (np.exp(-t / 0.006) + 0.8 * np.exp(-np.maximum(0.0, t - 0.05) / 0.006) * (t > 0.05))
+    sig += 0.8 * np.sin(2 * np.pi * (140 - 200 * t) * t) * np.exp(-t / 0.06)
+    return (sig / np.abs(sig).max()).astype(np.float32)
+
+
 def _pad(duration: float, root: float, rng: np.random.Generator) -> np.ndarray:
     """Leiser Klangteppich (Grundton, Quinte, Oktave) mit langsamem Atmen."""
     n = int(duration * SR)
@@ -229,10 +248,11 @@ def render_audio(notes: list[Note], duration: float, path: Path, instrument: str
             key = ("boom",)
             if key not in cache:
                 cache[key] = _boom()
-        elif note.kind in ("roar", "thunder", "whoosh"):
+        elif note.kind in ("roar", "thunder", "whoosh", "squeak", "chomp"):
             key = (note.kind,)
             if key not in cache:
-                cache[key] = {"roar": _roar, "thunder": _thunder, "whoosh": _whoosh}[note.kind](rng)
+                cache[key] = {"roar": _roar, "thunder": _thunder, "whoosh": _whoosh, "squeak": _squeak,
+                              "chomp": _chomp}[note.kind](rng)
         else:
             inst = "marimba" if note.kind == "tick" else instrument
             key = (inst, round(note.pitch, 2))

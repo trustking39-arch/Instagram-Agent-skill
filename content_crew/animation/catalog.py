@@ -96,7 +96,7 @@ TYPES: dict[str, dict] = {
         "idee": "Ein leuchtendes Skelett reist 24 Stunden zu den Dinosauriern: Portal, Brachiosaurus, Hitze, "
                 "T-Rex-Verfolgung, Versteck, Gewitter mit Vulkanausbruch, Triceratops-Herde, Nacht am Lagerfeuer, "
                 "Rückkehr – und ein Baby-T-Rex springt hinterher. Silhouetten-Stil, oben nur Stunde und Stichwort.",
-        "params": {"dinos": (2, 4, 3)},
+        "params": {"dinos": (2, 4, 3), "ending": ["classic", "haustier"]},
         "caption": "Was wäre, wenn du 24 Stunden bei den Dinos verbringst? 🦖 Wie lange würdest du überleben?",
         "tags": ["#dinosaurier", "#zeitreise", "#trex", "#animation", "#waswärewenn"],
     },
@@ -175,6 +175,10 @@ CAPTIONS: dict[str, list[str]] = {
         "{points} Fäden, ein Ball – schau, welches Muster entsteht ✨",
         "Aus Chaos wird Kunst: Jeder Aufprall ein Faden 🎶 Bleib bis zum Ende!",
     ],
+    "dino_trip_haustier": [
+        "Ich wollte nur 24 Stunden zu den Dinos … 🦖🦴 Wie würdest du den Kleinen nennen?",
+        "24 Stunden in der Kreidezeit – und einer kam mit zurück 🦖🦴 Wie soll er heißen?",
+    ],
     "dino_trip": [
         "Was wäre, wenn du 24 Stunden bei den Dinos verbringst? 🦖 Wie lange würdest du überleben?",
         "24 Stunden in der Kreidezeit 🦖 Hättest du den T-Rex überlebt?",
@@ -198,6 +202,8 @@ def make_text(kind: str, params: dict, music: str | None, seed: int) -> tuple[st
     rng = random.Random(seed * 31 + 7)
     values = {**params, "shape": SHAPES.get(int(params.get("sides", 6) or 6), "Vieleck")}
     song = SONGS.get(music or "")
+    if kind == "dino_trip" and params.get("ending") == "haustier":
+        return "24 Stunden bei den Dinos – mit blindem Passagier", rng.choice(CAPTIONS["dino_trip_haustier"])
     if song and kind in SONG_QUESTION and rng.random() < 0.45:
         tree = " 🎄" if music in XMAS else ""
         event = "Jede Flucht spielt" if kind == "escape_multiply" else "Jeder Aufprall spielt"

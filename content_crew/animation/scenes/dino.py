@@ -15,6 +15,7 @@ from content_crew.animation.engine import WHITE, Scene, color, mix, text_center
 
 TAU = 2 * math.pi
 BLACK = (0, 0, 0)
+HANG_ANGLE, HANG_MIRROR = 1.54, -1  # wie der Baby-Dino am Arm hängt (Kopf oben, Körper baumelt)
 
 # Himmel je Stunde: (Stunde, oben, unten)
 SKY = [
@@ -77,6 +78,11 @@ class DinoTrip(Scene):
         self.beat_len = 60 / 100
         self.fired: set[str] = set()
         self.herd = max(2, min(4, int(params.get("dinos", 3))))
+        self.ending = params.get("ending", "classic")  # classic | haustier (Nachspiel in der Gegenwart)
+        self.epi_len = 12.5 if self.ending == "haustier" else 0.0
+        self.story_T = max(3.0, self.target - self.epi_len)
+        self.epi_start = self.story_T * 24.6 / 24
+        self.hearts: list[float] = []
         rng = self.rng
         self.stars = [(rng.uniform(0, W), rng.uniform(0, H * 0.55), rng.uniform(1, 3) * W / 1080,
                        rng.uniform(0, TAU)) for _ in range(140)]
@@ -88,7 +94,18 @@ class DinoTrip(Scene):
     # --- Zeit ------------------------------------------------------------------
     def hour(self, t: float | None = None) -> float:
         t = self.t if t is None else t
-        return 24.0 * t / self.target
+        return 24.0 * t / self.story_T
+
+    def epi(self) -> float:
+        """Sekunden seit Beginn des Nachspiels (negativ = noch in der Urzeit)."""
+        return self.t - self.epi_start if self.ending == "haustier" else -1.0
+
+    def at_epi(self, e: float) -> bool:
+        key = f"epi{e:.2f}"
+        if key not in self.fired and 0 <= self.epi() and self.epi() >= e:
+            self.fired.add(key)
+            return True
+        return False
 
     def at_hour(self, h: float) -> bool:
         """Einmal-Ereignis: True genau beim ersten Bild nach Stunde h."""
@@ -200,6 +217,26 @@ class DinoTrip(Scene):
             for k in range(3):
                 c.drawLine(gx, g + 2, gx + (k - 1) * W * 0.008, g - rng.uniform(0.01, 0.025) * H, stroke)
         layers["near"] = (near.makeImageSnapshot(), top)
+        if self.ending == "haustier":
+            city, top = self._layer(H * 0.35, g + 4)
+            win, _ = self._layer(H * 0.35, g + 4)
+            c, wc = city.getCanvas(), win.getCanvas()
+            lit = skia.Paint(AntiAlias=True)
+            x = -0.02 * W
+            while x < W * 1.05:
+                bw, bh = rng.uniform(0.09, 0.18) * W, rng.uniform(0.1, 0.33) * H
+                c.drawRect(skia.Rect(x, g - bh, x + bw - W * 0.008, g + 4), fill)
+                if rng.random() < 0.4:  # Antenne
+                    c.drawRect(skia.Rect(x + bw * 0.45, g - bh - H * 0.03, x + bw * 0.47, g - bh), fill)
+                for row in range(int(bh / (H * 0.028)) - 1):
+                    for col in range(int(bw / (W * 0.035))):
+                        if rng.random() < 0.42:
+                            lit.setColor(color((255, rng.randint(190, 225), 120), rng.uniform(0.55, 0.95)))
+                            wx, wy = x + W * 0.012 + col * W * 0.035, g - bh + H * 0.018 + row * H * 0.028
+                            wc.drawRect(skia.Rect(wx, wy, wx + W * 0.016, wy + H * 0.012), lit)
+                x += bw
+            layers["city"] = (city.makeImageSnapshot(), top)
+            layers["windows"] = (win.makeImageSnapshot(), top)
         return layers
 
     def _blit(self, c: skia.Canvas, name: str, offset: float, rgb) -> None:
@@ -233,7 +270,8 @@ class DinoTrip(Scene):
         self.walk_phase += h * (9.5 if abs(v) > self.W * 0.3 else 5.2 if moving else 0.0)
         if 6.5 <= hour < 12.0:
             self.trex_phase += h * (7.0 if 7.4 <= hour < 10.0 else 3.2)
-        if self.done_at is None and hour >= 24.6:
+        end = (self.epi() >= self.epi_len) if self.ending == "haustier" else hour >= 24.6
+        if self.done_at is None and end:
             self.finish()
         self._sounds(hour)
 
@@ -259,6 +297,8 @@ class DinoTrip(Scene):
             self.play(0, 0.7, W * 0.7, kind="whoosh", accent=True)
         if self.at_hour(23.9):
             self.play(0, 0.8, W * 0.7, kind="whoosh", accent=True)
+        if self.epi() >= 0:
+            self._epilogue_sounds()
         # Musik: Puls, Hi-Hat, Melodie – je nach Szene
         if self.t >= self.beat:
             n = int(round(self.beat / self.beat_len))
@@ -276,6 +316,35 @@ class DinoTrip(Scene):
                 self.play(self.music.next() + (12 if 7.4 <= hour < 10.0 else 0), 0.2)
         if 6.5 <= hour < 12.0 and int(self.trex_phase / math.pi) != int((self.trex_phase - 0.12) / math.pi):
             self.play(0, 0.18, self.trex_x(hour), kind="boom")  # Schritte des T-Rex
+
+    def _epilogue_sounds(self) -> None:
+        W = self.W
+        if self.at_epi(0.0):
+            self.play(0, 0.8, W * 0.3, kind="whoosh", accent=True)
+            self.flash = 1.0
+        if self.at_epi(1.2):
+            self.play(0, 0.35, W * 0.55, kind="boom")
+        if self.at_epi(1.75):
+            self.play(0, 0.45, W * 0.3, kind="squeak", accent=True)
+        if self.at_epi(3.0):
+            self.play(0, 0.5, W * 0.38, kind="squeak", accent=True)
+        if self.at_epi(3.6):
+            self.play(0, 0.9, W * 0.5, kind="chomp", accent=True)
+            self.play(0, 0.3, W * 0.5, kind="boom", accent=True)
+            self.shake = 0.8
+        for k in range(8):  # klappernde Knochen beim Schütteln
+            if self.at_epi(4.6 + k * 0.22):
+                self.play(self.music.degree(15 + k % 3), 0.09, W * 0.5, kind="tick")
+        if self.at_epi(5.6):
+            self.play(0, 0.45, W * 0.5, kind="squeak", accent=True)
+        for k, e in enumerate((7.0, 7.6, 8.2)):
+            if self.at_epi(e):
+                self.hearts.append(self.t)
+                self.play(self.music.degree(10 + 2 * k), 0.3, W * 0.5, accent=True)
+        if self.at_epi(8.4):
+            self.play(0, 0.5, kind="boom", accent=True)
+            for p in self.music.chord():
+                self.play(p + 12, 0.25, accent=True)
 
     def frame(self, dt: float) -> None:
         hour = self.hour()
@@ -321,6 +390,9 @@ class DinoTrip(Scene):
 
     # --- Zeichnen ------------------------------------------------------------------
     def draw(self, c: skia.Canvas) -> None:
+        if self.epi() >= 0:
+            self._draw_epilogue(c, self.epi())
+            return
         W, H, g = self.W, self.H, self.ground
         hour = self.hour()
         top, bottom = sky_at(hour)
@@ -561,7 +633,7 @@ class DinoTrip(Scene):
             self.trex(c, x, g + hop, size, 1, (20, 16, 22), self.t * 14, 0.3)
 
     def skeleton(self, c: skia.Canvas, x: float, ground: float, S: float, facing: int, pose: str,
-                 jaw: float = 0.0, rot: float = 0.0) -> None:
+                 jaw: float = 0.0, rot: float = 0.0, arm_out: float = 0.0, arm_shake: float = 0.0) -> dict:
         ph = self.walk_phase
         leg, knee, arm, elbow, lean, bob, hip_h = 0.0, 0.05, 0.08, 0.25, 0.0, 0.0, 0.48
         swing = math.sin(ph)
@@ -626,8 +698,14 @@ class DinoTrip(Scene):
             else:
                 a1 = -arm * sign
                 a2 = a1 + elbow
+            if sign > 0 and arm_out > 0:  # vorderer Arm waagerecht nach vorn
+                want = math.pi / 2 + 0.08 + arm_shake  # fast waagerecht nach vorn
+                a1 = a1 + (want - a1) * arm_out
+                a2 = a2 + (a1 + 0.12 - a2) * arm_out
             ex, ey = limb(sx, sy, a1, S * 0.17)
             wx, wy = limb(ex, ey, a2, S * 0.16)
+            if sign > 0:
+                points = {"elbow": (ex, ey), "wrist": (wx, wy)}
             bone.setAlphaf(0.75 if sign < 0 else 1.0)
             c.drawLine(sx, sy, ex, ey, bone)
             c.drawLine(ex, ey, wx, wy, bone)
@@ -646,10 +724,128 @@ class DinoTrip(Scene):
         c.drawCircle(cx + facing * r * 0.38, cy - r * 0.08, r * 0.27, dark)
         c.drawCircle(cx + facing * r * 0.75, cy + r * 0.35, r * 0.09, dark)
         c.restore()
+        points["skull"] = (cx, cy)
+        return points
+
+    # --- Nachspiel: zurück in der Gegenwart, der Baby-T-Rex hängt am Arm wie ein Hund -----
+    def _draw_epilogue(self, c: skia.Canvas, e: float) -> None:
+        W, H, g = self.W, self.H, self.ground
+        c.drawPaint(skia.Paint(Shader=skia.GradientShader.MakeLinear(
+            [skia.Point(0, 0), skia.Point(0, g)], [color((10, 12, 40)), color((70, 40, 96))])))
+        dot = skia.Paint(AntiAlias=True)
+        for x, y, r, ph in self.stars[:60]:
+            dot.setColor(color(WHITE, 0.5 + 0.4 * math.sin(self.t * 2 + ph)))
+            c.drawCircle(x, y, r, dot)
+        c.drawCircle(W * 0.8, H * 0.28, W * 0.045, skia.Paint(AntiAlias=True, Color=color((240, 236, 220))))
+        if self.layers:
+            img, top = self.layers["city"]
+            c.drawImage(img, 0, top, skia.SamplingOptions(skia.FilterMode.kLinear), skia.Paint(
+                ColorFilter=skia.ColorFilters.Blend(color((20, 20, 46)), skia.BlendMode.kSrcIn)))
+            img, top = self.layers["windows"]
+            c.drawImage(img, 0, top)
+        lx = W * 0.86  # Straßenlaterne
+        c.drawCircle(lx - W * 0.05, H * 0.47, W * 0.32, skia.Paint(AntiAlias=True, Shader=skia.GradientShader.MakeRadial(
+            skia.Point(lx - W * 0.05, H * 0.47), W * 0.32, [color((255, 200, 120), 0.28), color((255, 180, 90), 0.0)])))
+        pole = skia.Paint(AntiAlias=True, StrokeWidth=W * 0.012, Style=skia.Paint.kStroke_Style,
+                          StrokeCap=skia.Paint.kRound_Cap, Color=color((14, 14, 26)))
+        lamp = skia.Path()
+        lamp.moveTo(lx, g)
+        lamp.lineTo(lx, H * 0.45)
+        lamp.quadTo(lx, H * 0.43, lx - W * 0.06, H * 0.44)
+        c.drawPath(lamp, pole)
+        c.drawCircle(lx - W * 0.06, H * 0.455, W * 0.018, skia.Paint(AntiAlias=True, Color=color((255, 228, 170))))
+        c.drawRect(skia.Rect(0, g, W, H), skia.Paint(Color=color((12, 12, 22))))
+        c.drawRect(skia.Rect(0, g, W, g + H * 0.006), skia.Paint(Color=color((90, 84, 110))))
+
+        px = W * 0.3  # Portal
+        size = _smooth(e / 0.5) * (1 - _smooth((e - 2.6) / 0.4))
+        if size > 0.01:
+            py, r = g - H * 0.11, H * 0.1 * size
+            for k, (rgb, w, speed) in enumerate((((0, 230, 255), 0.012, 1.5), ((180, 80, 255), 0.008, -2.2),
+                                                ((255, 255, 255), 0.004, 3.0))):
+                rr = r * (1 - k * 0.14)
+                c.drawOval(skia.Rect(px - rr * 0.62, py - rr, px + rr * 0.62, py + rr), skia.Paint(
+                    AntiAlias=True, Style=skia.Paint.kStroke_Style, StrokeWidth=W * w, Color=color(rgb, 0.95),
+                    PathEffect=skia.DashPathEffect.Make([rr * 0.5, rr * 0.18], self.t * 300 * speed)))
+
+        # Skelett: fliegt aus dem Portal, landet, dreht sich zum Baby, streckt den Arm aus
+        sx, hop, facing = W * 0.56, 0.0, 1
+        if e < 1.2:
+            f = _smooth((e - 0.5) / 0.7)
+            sx = px + (W * 0.56 - px) * f
+            hop = -math.sin(math.pi * f) * H * 0.09
+        if e >= 2.3:
+            facing = -1  # schaut zurück zum Portal
+        scale = _smooth((e - 0.45) / 0.15)
+        arm_out = _smooth((e - 3.2) / 0.4)
+        shaking = 1.0 if 4.6 <= e < 6.4 else 0.0
+        arm_shake = 0.28 * math.sin(TAU * 4.2 * self.t) * shaking
+        jaw = 0.55 * _smooth((e - 3.6) / 0.2) * (1 - _smooth((e - 6.6) / 0.5))
+        sx += self.fx.uniform(-1, 1) * W * 0.003 * shaking
+        pts = None
+        if scale > 0.01:
+            pts = self.skeleton(c, sx, g + hop, self.S * scale, facing, "stand", jaw, 0.0, arm_out, arm_shake)
+
+        # Baby-T-Rex: springt aus dem Portal, rennt los, schnappt zu und baumelt am Unterarm
+        bsize = W * 0.13
+        baby = (86, 196, 112)  # in der Gegenwart: kleiner grüner Dino mit Kulleraugen
+        if 1.7 <= e < 3.6 or pts is None:
+            if e >= 1.7:
+                if e < 2.2:
+                    f = _smooth((e - 1.7) / 0.5)
+                    bx, by = px + W * 0.04 * f, g - math.sin(math.pi * f) * H * 0.06
+                elif e < 2.8:
+                    bx, by = px + W * 0.04, g - abs(math.sin(self.t * 9)) * H * 0.006
+                else:
+                    f = _smooth((e - 2.8) / 0.8)
+                    if pts:
+                        tx, ty = self._bite_point(pts)
+                    else:
+                        tx, ty = W * 0.45, g - H * 0.12
+                    bx = px + W * 0.04 + (tx - px - W * 0.04 - bsize * 0.2) * f
+                    by = g + (ty + bsize * 1.1 - g) * f - math.sin(math.pi * f) * H * 0.07
+                self.trex(c, bx, by, bsize, 1, baby, self.t * 14, 0.35 if e > 2.8 else 0.0, 1.0,
+                          wag=0.5 * math.sin(TAU * 4 * self.t), cute=True)
+        elif pts is not None:
+            bx, by = self._bite_point(pts)
+            swing = 0.3 * math.sin(TAU * 1.5 * self.t) + 0.45 * shaking * math.sin(TAU * 4.2 * self.t - 0.7)
+            c.save()
+            c.translate(bx, by)
+            c.rotate(math.degrees(HANG_ANGLE + swing))
+            c.scale(HANG_MIRROR, 1)
+            self.trex(c, -0.95 * bsize, 1.22 * bsize, bsize, 1, baby, self.t * 16, 0.12, 1.0,
+                      wag=0.6 * math.sin(TAU * 5 * self.t), cute=True)
+            c.restore()
+            self._draw_hearts(c, bx, by)
+        self._draw_epilogue_text(c, e)
+
+    @staticmethod
+    def _bite_point(pts: dict) -> tuple[float, float]:
+        (ex, ey), (wx, wy) = pts["elbow"], pts["wrist"]
+        return ex + (wx - ex) * 0.85, ey + (wy - ey) * 0.85
+
+    def _draw_hearts(self, c: skia.Canvas, x: float, y: float) -> None:
+        W = self.W
+        for born in self.hearts:
+            age = self.t - born
+            if age > 1.8:
+                continue
+            hx, hy, s = x + math.sin(age * 4) * W * 0.02 + W * 0.03, y - W * 0.06 - age * W * 0.16, W * 0.03
+            heart = skia.Path()
+            heart.moveTo(hx, hy + s * 0.9)
+            heart.cubicTo(hx - s * 1.4, hy, hx - s * 0.6, hy - s * 1.0, hx, hy - s * 0.35)
+            heart.cubicTo(hx + s * 0.6, hy - s * 1.0, hx + s * 1.4, hy, hx, hy + s * 0.9)
+            c.drawPath(heart, skia.Paint(AntiAlias=True, Color=color((255, 90, 140), 1 - age / 1.8)))
+
+    def _draw_epilogue_text(self, c: skia.Canvas, e: float) -> None:
+        W, H = self.W, self.H
+        label = "ZURÜCK" if e < 3.6 else "AUTSCH!" if e < 8.0 else "NEUES HAUSTIER"
+        text_center(c, "2026", W / 2, H * 0.11, W * 0.12, alpha=_smooth(e / 0.5), shadow=True)
+        text_center(c, label, W / 2, H * 0.17, W * 0.07 if e >= 8.0 else W * 0.065, (255, 220, 150), 1.0, shadow=True)
 
     # --- Dinosaurier (Silhouetten) ---------------------------------------------------
     def trex(self, c: skia.Canvas, x: float, ground: float, size: float, facing: int, rgb, phase: float,
-             jaw: float = 0.0, eye: float = 0.0) -> None:
+             jaw: float = 0.0, eye: float = 0.0, wag: float | None = None, cute: bool = False) -> None:
         c.save()
         c.translate(x, ground)
         c.scale(facing * size, size)
@@ -669,17 +865,35 @@ class DinoTrip(Scene):
             legp.setStrokeWidth(0.13 if k else 0.11)
             c.drawPath(leg, legp)
         body = skia.Path()
-        body.moveTo(-1.25, -0.72)
-        body.cubicTo(-0.75, -0.92, -0.35, -1.0, 0.0, -0.98)
+        if wag is None:
+            body.moveTo(-1.25, -0.72)
+            body.cubicTo(-0.75, -0.92, -0.35, -1.0, 0.0, -0.98)
+        else:  # Schwanz separat, damit er wedeln kann (wie bei einem Hund)
+            body.moveTo(-0.5, -0.95)
+            body.cubicTo(-0.33, -0.99, -0.15, -0.99, 0.0, -0.98)
         body.cubicTo(0.28, -0.97, 0.45, -1.08, 0.58, -1.25)
         body.cubicTo(0.66, -1.36, 0.76, -1.42, 0.92, -1.40)
         body.cubicTo(1.02, -1.38, 1.1, -1.32, 1.1, -1.25)
         body.lineTo(0.78, -1.21)
         body.cubicTo(0.72, -1.12, 0.6, -0.98, 0.5, -0.88)
         body.cubicTo(0.4, -0.72, 0.22, -0.6, 0.0, -0.58)
-        body.cubicTo(-0.35, -0.6, -0.75, -0.66, -1.25, -0.72)
+        if wag is None:
+            body.cubicTo(-0.35, -0.6, -0.75, -0.66, -1.25, -0.72)
+        else:
+            body.cubicTo(-0.2, -0.58, -0.38, -0.6, -0.5, -0.63)
         body.close()
         c.drawPath(body, fill)
+        if wag is not None:
+            c.save()
+            c.translate(-0.45, -0.79)
+            c.rotate(math.degrees(wag))
+            tail = skia.Path()
+            tail.moveTo(0.0, -0.17)
+            tail.cubicTo(-0.3, -0.14, -0.55, -0.04, -0.8, 0.07)
+            tail.cubicTo(-0.5, 0.12, -0.25, 0.17, 0.0, 0.17)
+            tail.close()
+            c.drawPath(tail, fill)
+            c.restore()
         c.save()  # Unterkiefer (öffnet sich beim Brüllen)
         c.translate(0.76, -1.22)
         c.rotate(math.degrees(jaw) * 0.8)
@@ -696,7 +910,15 @@ class DinoTrip(Scene):
         arm.lineTo(0.6, -0.72)
         c.drawPath(arm, skia.Paint(AntiAlias=True, Style=skia.Paint.kStroke_Style, StrokeWidth=0.05,
                                    StrokeCap=skia.Paint.kRound_Cap, Color=color(rgb)))
-        if eye > 0:
+        if cute:  # großes Kulleraugen-Auge statt rotem Glühen
+            c.drawCircle(0.85, -1.32, 0.06, skia.Paint(AntiAlias=True, Color=color(WHITE)))
+            c.drawCircle(0.87, -1.32, 0.032, skia.Paint(AntiAlias=True, Color=color((15, 15, 20))))
+            belly = skia.Path()
+            belly.moveTo(0.45, -0.9)
+            belly.cubicTo(0.35, -0.7, 0.15, -0.62, -0.1, -0.62)
+            belly.cubicTo(0.1, -0.7, 0.3, -0.8, 0.45, -0.9)
+            c.drawPath(belly, skia.Paint(AntiAlias=True, Color=color(mix(rgb, WHITE, 0.45))))
+        elif eye > 0:
             c.drawCircle(0.86, -1.33, 0.025, skia.Paint(AntiAlias=True, Color=color((255, 60, 30), eye)))
         c.restore()
 
