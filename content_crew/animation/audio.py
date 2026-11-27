@@ -217,6 +217,17 @@ def _reverb(x: np.ndarray, rng: np.random.Generator, rt60: float = 1.9) -> np.nd
     return y.astype(np.float32)
 
 
+def moving_average(x: np.ndarray, win: int) -> np.ndarray:
+    """Gleitender Mittelwert, zentriert wie np.convolve(..., mode="same") – aber in O(n) statt O(n·win)."""
+    n = len(x)
+    csum = np.concatenate([[0.0], np.cumsum(x, dtype=np.float64)])
+    idx = np.arange(n)
+    half = (win - 1) // 2
+    lo = np.clip(idx - (win - 1 - half), 0, n)
+    hi = np.clip(idx + half + 1, 0, n)
+    return ((csum[hi] - csum[lo]) / win).astype(np.float32)
+
+
 def render_audio(notes: list[Note], duration: float, path: Path, instrument: str = "bell",
                  pad_root: float | None = None, seed: int = 0, reverb: float = 0.3,
                  voice: np.ndarray | None = None) -> None:
@@ -280,7 +291,7 @@ def render_audio(notes: list[Note], duration: float, path: Path, instrument: str
         v = np.zeros(n, np.float32)
         v[: min(n, len(voice))] = voice[:n]
         win = int(0.3 * SR)
-        env = np.convolve(np.abs(v), np.ones(win) / win, mode="same")
+        env = moving_average(np.abs(v), win)
         env = np.clip(env / (env.max() or 1.0) * 6, 0.0, 1.0)
         music = float(np.percentile(np.abs(mix), 99.5)) or 1.0
         mix = mix / music * 0.5 * (1 - 0.62 * env)[:, None] + v[:, None]
