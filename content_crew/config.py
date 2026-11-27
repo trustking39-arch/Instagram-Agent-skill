@@ -41,6 +41,31 @@ DEFAULTS: dict[str, Any] = {
     },
     # ki_captions: true = Titel/Caption schreibt das Sprachmodell (erst ab einem großen Modell sinnvoll)
     "animation": {"fps": 60, "bloom": 0.6, "crf": 18, "preset": "medium", "ki_captions": False},
+    # Shop-Abteilung: 14 KI-Arbeiter bauen und betreiben einen Online-Shop (Shopify). Nichts geht ohne Freigabe
+    # online, Jarvis gibt kein Geld aus. Alle Beträge in Euro, Preise brutto.
+    "shop": {
+        "enabled": True,
+        "name": "",                 # Name des Shops (leer = "Mein Shop")
+        "origin": "eu_lager",       # eu_lager | china_direkt | eigenlager
+        "vat": 20,                  # Umsatzsteuer in % (Österreich)
+        "pay_pct": 2.5,             # Zahlungsgebühr in %
+        "pay_fix": 0.30,            # Zahlungsgebühr fix pro Bestellung
+        "ads": 4.0,                 # angenommene Werbekosten pro Bestellung
+        "refund_pct": 5,            # Rückerstattungen in % vom Nettoumsatz
+        "min_profit": 4.0,          # Mindestgewinn pro Bestellung nach allen Kosten inkl. Werbung
+        "shipping_fee": 3.90,       # Versandkosten für Kunden
+        "free_from": 30.0,          # Gratisversand ab diesem Bestellwert (0 = nie)
+        "queue_size": 12,           # so viele Produkte dürfen gleichzeitig auf Freigabe warten
+        "ideas_per_cycle": 6,
+        "ki_ideen": True,           # wenn das Startsortiment durch ist: neue Ideen von Jarvis
+        "ki_texte": False,          # true = Jarvis formuliert den Einstieg der Produkttexte (großes Modell nötig)
+        "auto_online": False,       # true = vollständige Produkte (inkl. GPSR-Angaben) direkt aktiv schalten
+        "shopify_store": "",        # z. B. mein-shop.myshopify.com (Zugang in .env, siehe content-crew setup)
+        "shopify_api_version": "2026-07",
+        "owner": {"name": "", "anschrift": "", "email": "", "telefon": "", "gewerbe": "", "behoerde": "",
+                  "uid": ""},
+        "erledigt": {"gewerbe": False, "rechtstexte": False, "lieferant": False, "verpackung": False},
+    },
     "data_dir": "./data",
     "dry_run": False,
 }

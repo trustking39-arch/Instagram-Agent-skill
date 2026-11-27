@@ -37,6 +37,13 @@ SECTIONS = [
         ("TIKTOK_CLIENT_KEY", "Client Key", False),
         ("TIKTOK_CLIENT_SECRET", "Client Secret", True),
     ]),
+    ("Shopify – dein Shop für die Shop-Abteilung. Im Shopify Dev Dashboard eine App anlegen, Berechtigungen "
+     "write_products, write_content, write_publications und read_orders wählen, App im Shop installieren und "
+     "Client-ID und Secret hier eintragen", [
+        ("SHOPIFY_STORE", "Shop-Adresse (z. B. mein-shop.myshopify.com)", False),
+        ("SHOPIFY_CLIENT_ID", "Client-ID", False),
+        ("SHOPIFY_CLIENT_SECRET", "Client-Secret", True),
+    ]),
 ]
 
 

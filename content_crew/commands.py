@@ -8,7 +8,8 @@ from content_crew.db import DB
 
 HELP = (
     "Befehle: STATUS, STOP (pausieren), START (weiter), ANRUF (nach der Runde anrufen), OK <id> (Video freigeben), "
-    "NEIN <id> (verwerfen). Jeder andere Text ist eine Anweisung an Jarvis."
+    "NEIN <id> (verwerfen). Shop: SHOP (Übersicht), OK P<id> (Produkt freigeben), NEIN P<id> (ablehnen), "
+    "PREIS P<id> 3,40 (echten Einkaufspreis eintragen). Jeder andere Text ist eine Anweisung an Jarvis."
 )
 
 
@@ -45,6 +46,23 @@ def handle_owner_message(db: DB, text: str, channel: str = "sms") -> str:
         return status_text(db)
     if upper in {"HILFE", "HELP", "?"}:
         return HELP
+    if upper == "SHOP":
+        from content_crew.shop.manager import shop_status_text
+
+        return shop_status_text(db)
+    m = re.fullmatch(r"(OK|JA|NEIN|NO)\s+P(\d+)", upper)
+    if m:
+        from content_crew.shop.manager import approve_product, reject_product
+
+        pid = int(m.group(2))
+        return reject_product(db, pid) if m.group(1) in {"NEIN", "NO"} else approve_product(db, pid)
+    m = re.fullmatch(r"PREIS\s+P(\d+)\s+(\d+(?:[.,]\d{1,2})?)\s*(?:€|EUR)?", upper)
+    if m:
+        if not db.product(int(m.group(1))):
+            return f"Produkt P{m.group(1)} gibt es nicht."
+        cost = m.group(2).replace(",", ".")
+        db.add_inbox(channel, f"SHOPCOST {m.group(1)} {cost}")
+        return f"Danke! Der Kalkulator rechnet P{m.group(1)} mit {cost.replace('.', ',')} € Einkauf neu."
     if upper in {"ANRUF", "RUF MICH AN", "ANRUFEN"}:
         db.set_state("call_when_done", "1")
         return "Mach ich: Ich rufe dich an, sobald die nächste Runde fertig ist."

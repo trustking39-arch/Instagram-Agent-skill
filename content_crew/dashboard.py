@@ -10,14 +10,7 @@ from content_crew.commands import status_text
 from content_crew.config import Config
 from content_crew.db import DB
 
-WORKERS = [
-    ("jarvis", "Jarvis", "Chef", "plant, bewertet, lernt"),
-    ("scout", "Trend-Scout", "Arbeiter", "findet, was gerade läuft"),
-    ("writer", "Designer", "Arbeiter", "entwirft Animation, Musik und Caption"),
-    ("producer", "Animator", "Arbeiter", "rendert das Video mit Ton (60 fps)"),
-    ("publisher", "Uploader", "Arbeiter", "lädt auf die Plattformen"),
-    ("analyst", "Analyst", "Arbeiter", "misst, was viral geht"),
-]
+from content_crew.shop.team import DEPARTMENTS, WORKERS  # noqa: E402 – 20 Arbeiter in 6 Abteilungen
 
 STATUS_LABEL = {
     "draft": "Entwurf", "produced": "fertig", "awaiting_approval": "wartet auf Freigabe",
@@ -60,12 +53,16 @@ color:#fff;border-color:var(--accent)}.actions{display:flex;gap:8px;flex-wrap:wr
 input[type=text]{font:inherit;padding:6px 10px;border-radius:8px;border:1px solid var(--line);
 background:var(--card);color:var(--text);flex:1;min-width:200px}
 .say{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+h3.dept{font-size:14px;margin:18px 0 8px}h3.dept span{color:var(--muted);font-weight:400}
+.prods{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-top:10px}
+.kv{display:flex;justify-content:space-between;gap:8px;font-size:14px;font-variant-numeric:tabular-nums}
+.todo li.done{color:var(--muted);text-decoration:line-through}
 """
 
 REFRESH_JS = """
 setInterval(async()=>{try{const r=await fetch(location.pathname,{cache:'no-store'});
 const d=new DOMParser().parseFromString(await r.text(),'text/html');
-for(const id of ['live','team','msgs']){const n=d.getElementById(id);if(n)document.getElementById(id).replaceWith(n);}
+for(const id of ['live','team','shop','msgs']){const n=d.getElementById(id);if(n)document.getElementById(id).replaceWith(n);}
 }catch(e){}},10000);
 """
 
@@ -93,14 +90,19 @@ def render(cfg: Config, db: DB) -> str:
     state = ('<span class="badge warn">pausiert</span>' if paused else '<span class="badge ok">arbeitet</span>')
 
     team = []
-    for key, name, role, job in WORKERS:
-        a = db.activity(key)
-        busy = time.time() - a["ts"] < 600 and not a["text"].startswith(("wartet", "fertig", "Runde fertig"))
-        team.append(
-            f'<div class="card{" boss" if key == "jarvis" else ""}{" busy" if busy else ""}">'
-            f'<div class="who"><b>{e(name)}</b><span class="role">{e(role)} · {e(job)}</span></div>'
-            f'<div class="now">{e(a["text"])}</div><div class="when">{_ago(a["ts"])}</div></div>'
-        )
+    for dept, about in DEPARTMENTS.items():
+        cards = []
+        for key, name, department, job in WORKERS:
+            if department != dept:
+                continue
+            a = db.activity(key)
+            busy = time.time() - a["ts"] < 600 and not a["text"].startswith(("wartet", "fertig", "Runde fertig"))
+            cards.append(
+                f'<div class="card{" boss" if key == "jarvis" else ""}{" busy" if busy else ""}">'
+                f'<div class="who"><b>{e(name)}</b><span class="role">{e(job)}</span></div>'
+                f'<div class="now">{e(a["text"])}</div><div class="when">{_ago(a["ts"])}</div></div>'
+            )
+        team.append(f'<h3 class="dept">{e(dept)} <span>· {e(about)}</span></h3><div class="grid">{"".join(cards)}</div>')
 
     metrics: dict[int, list[dict]] = {}
     for m in db.latest_metrics():
@@ -145,7 +147,9 @@ def render(cfg: Config, db: DB) -> str:
 <a class="btn" href="/team">Team-Büro live ansehen</a>
 <form method="post" action="/logout"><button>Abmelden</button></form></div></div>
 
-<h2>Team</h2><div class="grid" id="team">{"".join(team)}</div>
+<h2>Team · 20 KI-Arbeiter</h2><div id="team">{"".join(team)}</div>
+
+<h2>Shop</h2><div class="card" id="shop">{_shop_html(cfg, db)}</div>
 
 <h2>Anweisung an Jarvis</h2><div class="card">
 <form method="post" action="/dashboard/cmd" class="say"><input type="text" name="text" required
@@ -183,6 +187,45 @@ def render_login(error: str = "", configured: bool = True) -> str:
 border:1px solid var(--line);background:var(--card);color:var(--text);flex:1;min-width:200px}}</style></head>
 <body><main style="max-width:420px;padding-top:15vh"><div class="card"><h1>Jarvis</h1>
 <p class="sub">Melde dich an, um dein Team zu sehen.</p>{body}</div></main></body></html>"""
+
+
+def _shop_html(cfg: Config, db: DB) -> str:
+    """Produkte zur Freigabe, Kennzahlen und was der Besitzer noch erledigen muss."""
+    from content_crew.shop.manager import gpsr_complete, shop_status_text
+    from content_crew.shop.pricing import eur
+    from content_crew.shop.website import legal_todos
+
+    e = escape
+    scfg = cfg.get("shop", {}) or {}
+    if not scfg.get("enabled", True):
+        return '<p class="meta">Die Shop-Abteilung ist ausgeschaltet (config.yaml: shop.enabled).</p>'
+    connected = bool((cfg.env("SHOPIFY_STORE") or scfg.get("shopify_store")) and
+                     (cfg.env("SHOPIFY_ACCESS_TOKEN") or cfg.env("SHOPIFY_CLIENT_SECRET")))
+    cards = []
+    for p in db.products("wartet", limit=24):
+        pid = p["id"]
+        calc, offer = p.get("calc", {}), p.get("calc", {}).get("offer", {})
+        level = {"ok": "ok", "warnung": "warn"}.get(p.get("safety", {}).get("level"), "bad")
+        cards.append(
+            f'<div class="card"><div class="vt">P{p["id"]} · {e(p.get("texts", {}).get("title", p["name"]))}</div>'
+            f'<div class="meta">{e(p.get("collection", ""))} · {e(offer.get("label", ""))}</div>'
+            f'<div class="kv"><span>Preis</span><b>{eur(offer.get("price", 0))}</b></div>'
+            f'<div class="kv"><span>Gewinn pro Bestellung</span><b>{eur(calc.get("profit", 0))}</b></div>'
+            f'<div class="kv"><span>Einkauf ({e(p.get("price_status", ""))})</span><b>{eur(p.get("unit_cost", 0))}</b></div>'
+            f'<div class="kv"><span>Lieferzeit</span><b>{e(p.get("delivery_days", ""))} Tage</b></div>'
+            f'<div class="kv"><span>Produktprüfer</span><span class="badge {level}">{e(p.get("safety", {}).get("level", ""))}</span></div>'
+            f'<div class="actions" style="margin-top:8px">{_cmd("OK P%d" % pid, "Freigeben", True)}'
+            f'{_cmd("NEIN P%d" % pid, "Ablehnen")}</div></div>')
+    approved = db.products(["freigegeben", "online"])
+    todos = legal_todos(scfg, connected, sum(1 for p in approved if not gpsr_complete(p)), len(approved))
+    todo_html = "".join(f'<li class="{"done" if t["done"] else ""}">{e(t["text"])}</li>' for t in todos)
+    last = (db.doc("letzte_runde") or {}).get("text", "")
+    last_html = f'<p class="meta">{e(last)}</p>' if last else ""
+    return (f'<p>{e(shop_status_text(db, connected))}</p>{last_html}'
+            '<div class="actions"><a class="btn" href="/shop">Shop-Vorschau ansehen</a></div>'
+            f'<div class="prods">{"".join(cards) or "<p class=meta>Gerade wartet kein Produkt auf dich.</p>"}</div>'
+            f'<p style="margin-top:16px"><b>Das fehlt noch, bevor der Shop verkaufen darf:</b></p>'
+            f'<ul class="todo">{todo_html}</ul>')
 
 
 def _cmd(command: str, label: str, primary: bool = False) -> str:

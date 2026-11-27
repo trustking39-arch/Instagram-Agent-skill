@@ -233,6 +233,43 @@ def cmd_animate(args) -> None:
               f"{info['duration']:.0f} s · {info['notes']} Töne")
 
 
+def cmd_shop(args) -> None:
+    """Shop-Abteilung: eine Runde, Übersicht, Freigaben, echter Einkaufspreis, Export, Vorschau."""
+    cfg, db = _setup(args)
+    from content_crew.shop import ShopManager
+    from content_crew.shop.pricing import eur
+
+    manager = ShopManager(cfg, db, LLM(cfg["llm"], cfg.env("JARVIS_API_KEY", "none")), Notifier(cfg, db))
+    action, values = args.aktion, [v.lstrip("Pp") for v in args.werte]
+    if action == "runde":
+        report = manager.run_cycle()
+        print(manager.summary(report))
+        for p in report["neu"]:
+            offer = p["calc"]["offer"]
+            print(f"  P{p['id']:<4} {p['texts']['title'][:46]:46} {offer['label']:8} {eur(offer['price']):>9}  "
+                  f"Gewinn {eur(p['calc']['profit'])}")
+        for p in report["aussortiert"]:
+            print(f"  aussortiert: {p['name']} – {p.get('reason', '')}")
+        print(f"Vorschau: {manager.dir / 'vorschau.html'}")
+    elif action == "status":
+        print(manager.status_text())
+        for p in db.products(limit=args.limit if hasattr(args, "limit") else 50):
+            price = eur(p["calc"]["offer"]["price"]) if p.get("calc", {}).get("ok") else "–"
+            print(f"  P{p['id']:<4} [{p['status']}] {p['name']}  {price}")
+    elif action in ("ok", "nein"):
+        for v in values:
+            print(manager.approve(int(v)) if action == "ok" else manager.reject(int(v)))
+    elif action == "preis":
+        if len(values) != 2:
+            sys.exit("So geht's: content-crew shop preis P3 2,40")
+        print(manager.set_cost(int(values[0]), float(values[1].replace(",", "."))))
+    elif action == "export":
+        manager.sync()
+        print(f"Shopify-Importdatei: {manager.dir / 'shopify-import.csv'}")
+    elif action == "vorschau":
+        print(manager.write_preview())
+
+
 def cmd_status(args) -> None:
     cfg, db = _setup(args)
     print(status_text(db))
@@ -318,6 +355,11 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--duration", type=int)
     p.add_argument("--fps", type=int)
     p.set_defaults(func=cmd_animate)
+    p = sub.add_parser("shop", help="Shop-Abteilung: runde | status | ok P1 | nein P1 | preis P1 2,40 | export | vorschau")
+    p.add_argument("aktion", nargs="?", default="runde",
+                   choices=["runde", "status", "ok", "nein", "preis", "export", "vorschau"])
+    p.add_argument("werte", nargs="*", help="Produktnummern (P1 P2 …) bzw. Nummer und Einkaufspreis")
+    p.set_defaults(func=cmd_shop)
     p = sub.add_parser("publish-pending", help="alle wartenden Videos hochladen")
     p.add_argument("--platform", choices=["youtube", "instagram", "tiktok"])
     p.set_defaults(func=cmd_publish_pending)

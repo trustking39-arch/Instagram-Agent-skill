@@ -44,6 +44,11 @@ class Boss:
         self.animator: Animator | None = None
         self.publisher = Publisher(cfg, self.platforms)
         self.analyst = Analyst(cfg, db, self.platforms)
+        self.shop = None
+        if (cfg.get("shop") or {}).get("enabled", True):
+            from content_crew.shop import ShopManager
+
+            self.shop = ShopManager(cfg, db, llm, notifier)
 
     # ------------------------------------------------------------------
     def _producer(self) -> VideoProducer:
@@ -110,8 +115,12 @@ class Boss:
         instructions = []
         for msg in self.db.take_inbox():
             m = re.fullmatch(r"APPROVE (\d+)", msg["text"])
+            cost = re.fullmatch(r"SHOPCOST (\d+) (\d+(?:\.\d+)?)", msg["text"])
             if m:
                 self.publish(int(m.group(1)))
+            elif cost:
+                if self.shop is not None:
+                    self.notifier.notify("report", self.shop.set_cost(int(cost.group(1)), float(cost.group(2))))
             else:
                 instructions.append(msg["text"])
                 self.db.add_note("instruction", msg["text"])
@@ -431,6 +440,7 @@ class Boss:
             return []
 
         act = self.db.set_activity
+        shop_summary = self.run_shop()
         act("jarvis", "leitet eine neue Runde")
         act("analyst", "holt Aufrufe, Likes und Kommentare")
         hits, errors = self.analyst.refresh()
@@ -471,11 +481,23 @@ class Boss:
             if vid:
                 created.append(vid)
         self.db.set_state("last_cycle", str(time.time()))
-        act("jarvis", f"Runde fertig – {len(created)} Video(s). Wartet auf die nächste Runde")
+        act("jarvis", f"Runde fertig – {len(created)} Video(s). {shop_summary} Wartet auf die nächste Runde")
         if self.db.get_state("call_when_done") == "1":
             self.db.set_state("call_when_done", "0")
             self.notifier.call(self.cycle_summary(created, insights), kind="done", ask=True)
         return created
+
+    def run_shop(self) -> str:
+        """Shop-Runde der 14 Shop-Arbeiter. Ein Fehler dort hält die Video-Produktion nicht auf."""
+        if self.shop is None:
+            return ""
+        try:
+            report = self.shop.run_cycle()
+            return self.shop.summary(report)
+        except Exception as exc:  # noqa: BLE001
+            log.exception("Shop-Runde fehlgeschlagen")
+            self.db.set_activity("jarvis", f"Shop-Runde abgebrochen: {exc}"[:200])
+            return "Shop-Runde abgebrochen."
 
     def cycle_summary(self, created: list[int], insights: dict) -> str:
         titles = [self.db.video(v)["script"]["title"] for v in created]

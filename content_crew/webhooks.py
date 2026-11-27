@@ -146,7 +146,7 @@ def create_app(cfg: Config, db: DB):
 
         page = (Path(__file__).parent / "static" / "team.html").read_text(encoding="utf-8")
         head, body = page.split('<div class="wrap">', 1)
-        body = '<div class="wrap">' + body.replace("__VIDEOS__", "[]")
+        body = '<div class="wrap">' + body.replace("__VIDEOS__", "[]").replace("__SHOP__", "[]")
         return HTMLResponse(
             '<!doctype html><html lang="de"><head><meta charset="utf-8">'
             '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">'
@@ -156,9 +156,21 @@ def create_app(cfg: Config, db: DB):
     def team_state(request: Request):
         if not allowed(request):
             raise HTTPException(status_code=403)
-        workers = {w: db.activity(w) for w in ("jarvis", "scout", "writer", "producer", "publisher", "analyst")}
+        from content_crew.shop.team import KEYS
+
+        workers = {w: db.activity(w) for w in KEYS}
         waiting = db.conn.execute("SELECT COUNT(*) FROM videos WHERE status='awaiting_approval'").fetchone()[0]
-        return {"workers": workers, "waiting": waiting}
+        rows = db.conn.execute("SELECT status, COUNT(*) n FROM products GROUP BY status").fetchall()
+        return {"workers": workers, "waiting": waiting, "shop": {r["status"]: r["n"] for r in rows}}
+
+    @app.get("/shop", response_class=HTMLResponse)
+    def shop_preview(request: Request):
+        """Vorschau des Shops, so wie Jarvis ihn aufbaut – mit Jarvis-Notizen (Gewinn, Risiko, Status)."""
+        if not allowed(request):
+            return RedirectResponse("/login", status_code=303)
+        from content_crew.shop import ShopManager
+
+        return HTMLResponse(ShopManager(cfg, db).write_preview().read_text(encoding="utf-8"))
 
     @app.post("/dashboard/cmd")
     async def dashboard_cmd(request: Request):

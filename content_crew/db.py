@@ -53,6 +53,16 @@ CREATE TABLE IF NOT EXISTS alerts (
     PRIMARY KEY (video_id, platform, kind)
 );
 CREATE TABLE IF NOT EXISTS state (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS products (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at REAL NOT NULL,
+    updated_at REAL NOT NULL,
+    status TEXT NOT NULL,              -- wartet | freigegeben | online | abgelehnt | rechnet_sich_nicht | zu_riskant
+    name TEXT NOT NULL,
+    data TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS shop_docs (key TEXT PRIMARY KEY, updated_at REAL NOT NULL, data TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS shop_orders (id TEXT PRIMARY KEY, created_at REAL NOT NULL, data TEXT NOT NULL);
 """
 
 
@@ -182,3 +192,70 @@ class DB:
             (time.time(), kind, channel, text, int(sent)),
         )
         self.conn.commit()
+
+    # --- Shop: Produkte ---
+    def add_product(self, name: str, data: dict, status: str = "wartet") -> int:
+        now = time.time()
+        cur = self.conn.execute(
+            "INSERT INTO products(created_at, updated_at, status, name, data) VALUES (?,?,?,?,?)",
+            (now, now, status, name, json.dumps(data, ensure_ascii=False)),
+        )
+        self.conn.commit()
+        return int(cur.lastrowid)
+
+    def update_product(self, product_id: int, status: str | None = None, data: dict | None = None) -> None:
+        fields: dict[str, Any] = {"updated_at": time.time()}
+        if status is not None:
+            fields["status"] = status
+        if data is not None:
+            fields["data"] = json.dumps(data, ensure_ascii=False)
+            fields["name"] = data.get("name", "")
+        cols = ", ".join(f"{k}=?" for k in fields)
+        self.conn.execute(f"UPDATE products SET {cols} WHERE id=?", (*fields.values(), product_id))
+        self.conn.commit()
+
+    def product(self, product_id: int) -> dict | None:
+        row = self.conn.execute("SELECT * FROM products WHERE id=?", (product_id,)).fetchone()
+        return self._product(row) if row else None
+
+    def products(self, status: str | list[str] | None = None, limit: int = 200) -> list[dict]:
+        if status:
+            states = [status] if isinstance(status, str) else list(status)
+            rows = self.conn.execute(
+                f"SELECT * FROM products WHERE status IN ({','.join('?' * len(states))}) ORDER BY id DESC LIMIT ?",
+                (*states, limit),
+            ).fetchall()
+        else:
+            rows = self.conn.execute("SELECT * FROM products ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
+        return [self._product(r) for r in rows]
+
+    @staticmethod
+    def _product(row: sqlite3.Row) -> dict:
+        d = json.loads(row["data"])
+        d.update(id=row["id"], status=row["status"], created_at=row["created_at"], updated_at=row["updated_at"])
+        return d
+
+    # --- Shop: Seiten, Entwürfe, Berichte ---
+    def set_doc(self, key: str, data: Any) -> None:
+        self.conn.execute("INSERT OR REPLACE INTO shop_docs(key, updated_at, data) VALUES (?,?,?)",
+                          (key, time.time(), json.dumps(data, ensure_ascii=False)))
+        self.conn.commit()
+
+    def doc(self, key: str, default: Any = None) -> Any:
+        row = self.conn.execute("SELECT data FROM shop_docs WHERE key=?", (key,)).fetchone()
+        return json.loads(row["data"]) if row else default
+
+    # --- Shop: Bestellungen (aus Shopify) ---
+    def upsert_order(self, order_id: str, created_at: float, data: dict) -> bool:
+        """True, wenn die Bestellung neu ist."""
+        new = self.conn.execute("SELECT 1 FROM shop_orders WHERE id=?", (order_id,)).fetchone() is None
+        self.conn.execute("INSERT OR REPLACE INTO shop_orders(id, created_at, data) VALUES (?,?,?)",
+                          (order_id, created_at, json.dumps(data, ensure_ascii=False)))
+        self.conn.commit()
+        return new
+
+    def orders(self, since: float = 0, limit: int = 500) -> list[dict]:
+        rows = self.conn.execute(
+            "SELECT * FROM shop_orders WHERE created_at>=? ORDER BY created_at DESC LIMIT ?", (since, limit)
+        ).fetchall()
+        return [{**json.loads(r["data"]), "id": r["id"], "created_at": r["created_at"]} for r in rows]

@@ -35,5 +35,29 @@ video:
   font: ""                                     # leer = automatisch
   background_dir: ""                           # optional: Ordner mit eigenen Clips/Bildern
 
+shop:                                          # Shop-Abteilung: 14 KI-Arbeiter bauen deinen Online-Shop
+  enabled: true
+  name: ""                                     # Name deines Shops
+  origin: eu_lager                             # eu_lager | china_direkt | eigenlager
+  min_profit: 4.0                              # Mindestgewinn pro Bestellung (€) nach allen Kosten
+  ads: 4.0                                     # angenommene Werbekosten pro Bestellung (€)
+  shipping_fee: 3.90                           # Versandkosten für Kunden (€)
+  free_from: 30.0                              # Gratisversand ab Bestellwert (€), 0 = nie
+  vat: 20                                      # Umsatzsteuer in % (Österreich)
+  auto_online: false                           # true = vollständige Produkte direkt aktiv schalten
+  shopify_store: ""                            # z. B. mein-shop.myshopify.com (Zugang: content-crew setup)
+  owner:                                       # fürs Impressum
+    name: ""
+    anschrift: ""
+    email: ""
+    gewerbe: ""                                # z. B. Handelsgewerbe
+    behoerde: ""                               # z. B. Bezirkshauptmannschaft …
+    uid: ""
+  erledigt:                                    # abhaken, wenn erledigt
+    gewerbe: false
+    rechtstexte: false
+    lieferant: false
+    verpackung: false
+
 data_dir: ./data
 dry_run: false                                 # true = nichts hochladen, keine SMS/Anrufe

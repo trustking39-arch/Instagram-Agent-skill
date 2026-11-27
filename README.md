@@ -3,6 +3,8 @@
 Jarvis (dein lokaler [OpenJarvis](https://github.com/open-jarvis/OpenJarvis)) ist der **Chef**.
 Er steuert ein Team aus KI-Arbeitern, die rund um die Uhr Content für YouTube Shorts,
 Instagram Reels und TikTok machen – und er meldet sich per **SMS oder Anruf** bei dir.
+Dazu kommt eine **Shop-Abteilung** mit 14 weiteren Arbeitern, die einen Online-Shop (Shopify)
+aufbauen und betreiben – zusammen **20 KI-Arbeiter** ([siehe unten](#die-shop-abteilung)).
 
 ```
                     ┌──────────────── Du ────────────────┐
@@ -78,6 +80,55 @@ Einstellbar in `config.yaml` unter `notify`.
 - alles andere, z. B. *„Mach mehr Videos über Ernährung, weniger Sport“* – Jarvis übernimmt das als Anweisung
 
 Nur deine eigene Nummer (`OWNER_PHONE_NUMBER`) wird akzeptiert, Twilio-Anfragen werden per Signatur geprüft.
+
+## Die Shop-Abteilung
+
+14 weitere Arbeiter bauen mit Jarvis einen Online-Shop auf: Sie finden Produkte, rechnen, prüfen,
+schreiben die Seiten, bauen die Website und kümmern sich später um Bestellungen und Zahlen.
+**Nichts geht ohne deine Freigabe online, und Jarvis gibt kein Geld aus.**
+
+| Abteilung | Arbeiter | Aufgabe |
+|---|---|---|
+| Einkauf | **Produkt-Scout** | Sucht Alltagshelfer, die ein Problem lösen und sich im Video gut zeigen lassen (Startsortiment mit 26 Produkten, danach Ideen von Jarvis). Saisonware zuerst. |
+| | **Einkäufer** | Legt Herkunft, Einkaufspreis, Versand, Zoll und Lieferzeit fest. Ohne Angebot vom Lieferanten rechnet er vorsichtig mit dem oberen Schätzpreis. |
+| | **Kalkulator** | Rechnet pro Bestellung mit Umsatzsteuer, Versand, Zoll, Zahlungsgebühr, Werbung und Rückerstattungen. Setzt den Preis so, dass mindestens `min_profit` übrig bleibt – sonst als 2er- oder 3er-Set, sonst fliegt das Produkt raus. Keine erfundenen „statt“-Preise. |
+| | **Produktprüfer** | Sortiert aus, was für einen kleinen Shop rechtlich riskant ist: Elektronik/Akkus, Spielzeug und Kinderartikel, Kosmetik, Lebensmittelkontakt, Schmuck, Medizin, Waffen, Chemikalien, Markenware. Merkt Hinweise an (Textilkennzeichnung, Latex, Magnete …) und welche Angaben zur Produktsicherheit (GPSR) noch fehlen. |
+| Website | **Webdesigner** | Baut Startseite, Kategorien, Menü und die Seiten Über uns, Versand, FAQ und Kontakt. |
+| | **Produkttexter** | Schreibt jede Produktseite auf Deutsch – ohne Heilversprechen und Übertreibungen. |
+| | **SEO-Experte** | Google-Titel, Beschreibung, Adresse (Handle) und Schlagwörter. |
+| | **Rechts-Check** | Führt die Liste, was du vor dem Verkauf erledigen musst (Gewerbe, Impressum, Rechtstexte, Lieferant, GPSR, Verpackung). |
+| | **Shop-Verwalter** | Überträgt freigegebene Produkte, Seiten und Kategorien nach Shopify. Ohne Zugang schreibt er eine Shopify-Importdatei (`data/shop/shopify-import.csv`). |
+| Marketing | **Werbe-Manager** | Plant pro Produkt Video-Idee, Zielgruppe und einen Anzeigen-Test mit Stopp-Grenze (aus der Kalkulation). Bezahlte Werbung nur mit deiner Freigabe. |
+| | **E-Mail-Marketing** | Entwürfe für Willkommensmail, Neuheiten-Newsletter und Warenkorb-Erinnerung. |
+| Betrieb | **Bestell-Manager** | Holt Bestellungen aus Shopify, meldet neue und verspätete. |
+| | **Kundenservice** | Pflegt die FAQ und beantwortet Kundenfragen. |
+| | **Buchhalter** | Umsatz, Umsatzsteuer und Ergebnis der letzten 30 Tage, CSV pro Monat für die Steuerberatung. |
+
+Die Shop-Runde läuft in jeder Jarvis-Runde mit. Neue Produkte landen im Dashboard unter **Shop**
+(mit Freigeben/Ablehnen) und als SMS. Die **Shop-Vorschau** (`/shop` im Dashboard oder
+`data/shop/vorschau.html`) zeigt, wie der Shop aussehen wird – mit Jarvis-Notizen zu Gewinn und Risiko.
+
+| SMS / Dashboard | Befehl am PC | Wirkung |
+|---|---|---|
+| `SHOP` | `content-crew shop status` | Übersicht |
+| `OK P3` / `NEIN P3` | `content-crew shop ok P3` | Produkt 3 freigeben / ablehnen |
+| `PREIS P3 2,40` | `content-crew shop preis P3 2,40` | echten Einkaufspreis eintragen, der Kalkulator rechnet neu |
+| | `content-crew shop` | eine Shop-Runde jetzt |
+| | `content-crew shop export` | Shopify-Importdatei schreiben |
+
+### So wird daraus ein echter Shop
+
+1. **Gewerbe anmelden** (Österreich: Handelsgewerbe, online über usp.gv.at). Die Gründerberatung der WKO hilft gratis.
+2. **Shopify-Konto** anlegen, Zahlungen einrichten, unter *Einstellungen → Richtlinien* AGB, Widerruf und Datenschutz erzeugen und prüfen lassen.
+3. **Jarvis verbinden:** Im Shopify **Dev Dashboard** eine App anlegen, Berechtigungen `write_products`, `write_content`, `write_publications`, `read_orders` wählen, die App im Shop installieren und Client-ID und Secret mit `content-crew setup` eintragen. Jarvis holt sich damit selbst ein Zugangs-Token (gilt etwa 24 Stunden und wird erneuert).
+4. **Lieferanten verbinden**, z. B. die CJdropshipping-App in Shopify (Lager in der EU wählen). Dort die von Jarvis angelegten Produkte mit dem Lieferantenprodukt verknüpfen – dann gehen Bestellungen automatisch an den Lieferanten.
+5. Pro Produkt **Hersteller, EU-Verantwortlichen und Sicherheitshinweise** vom Lieferanten eintragen (GPSR) und Fotos hochladen. Erst dann schaltest du das Produkt aktiv (oder `auto_online: true`).
+6. Impressum-Daten in `config.yaml` unter `shop.owner` eintragen und erledigte Punkte unter `shop.erledigt` abhaken.
+
+Ehrlich gesagt: Einkaufs- und Versandpreise sind Schätzwerte, bis der Lieferant echte Zahlen liefert
+(`PREIS P3 …`). Die Shopify-Anbindung ist gegen die Schnittstellen-Beschreibung gebaut und getestet,
+aber noch nicht mit einem echten Shop ausprobiert – Fehler meldet der Shop-Verwalter im Dashboard und per SMS.
+Gewinn garantiert niemand: Der Kalkulator sorgt nur dafür, dass sich jede **einzelne** Bestellung rechnet.
 
 ---
 

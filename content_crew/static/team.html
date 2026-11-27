@@ -21,6 +21,9 @@
   --publisher: #4fe3a1;
   --analyst: #ff8a62;
   --you: #ffd36a;
+  --productscout: #ffc85c; --buyer: #ffa365; --calculator: #ffe08a; --safety: #ff8f8f;
+  --webdesigner: #8fb8ff; --copywriter: #b49bff; --seo: #6fd6ff; --legal: #c9c3ff; --shopsync: #7fe7c4;
+  --ads: #ff7ac8; --email: #ffa6dc; --orders: #6ff0b0; --support: #a6f07a; --accountant: #f0d36f;
   --font-display: "Fredoka", "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
   --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
@@ -45,7 +48,8 @@ h1 span { color: var(--jarvis); }
 
 .room { position: relative; background: var(--room); border: 1px solid var(--line); border-radius: 18px; padding: 12px 12px 6px; display: grid; gap: 6px; min-width: 0; transition: background .4s, border-color .4s, box-shadow .4s; }
 .room.on { background: var(--room-on); border-color: color-mix(in srgb, var(--c) 55%, var(--line)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 25%, transparent), 0 10px 40px -12px color-mix(in srgb, var(--c) 55%, transparent); }
-.who { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.who { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 8px; min-width: 0; }
+.who h2 { min-width: 0; overflow-wrap: anywhere; }
 .who h2 { font: 600 18px/1.2 var(--font-display); margin: 0; color: var(--c); }
 .who span { font: 500 11px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 .state { font: 500 11px/1 var(--font-mono); color: var(--muted); display: flex; align-items: center; gap: 6px; }
@@ -69,6 +73,9 @@ h1 span { color: var(--jarvis); }
 .feed li { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 8px; color: var(--muted); }
 .feed li b { color: var(--c); font-weight: 500; }
 .feed li span { color: var(--fg); overflow-wrap: anywhere; }
+.dept { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-top: 8px; }
+.dept h2 { margin: 0; font: 600 22px/1.2 var(--font-display); }
+.dept span { color: var(--muted); font-size: 13.5px; }
 .note { color: var(--muted); font-size: 13px; margin: 0; }
 .note code { font: 500 12.5px var(--font-mono); color: var(--fg); background: var(--room); padding: 2px 6px; border-radius: 6px; user-select: all; }
 
@@ -108,11 +115,12 @@ h1 span { color: var(--jarvis); }
 <div class="wrap">
   <header>
     <h1><span>Jarvis</span> Studio</h1>
-    <p class="sub" id="sub">So arbeitet dein Team: Jarvis plant und prüft, die Arbeiter suchen Trends, entwerfen, animieren und legen fertige Videos zur Freigabe bereit.</p>
+    <p class="sub" id="sub">So arbeitet dein Team: Jarvis plant und prüft. Das Content-Team macht TikTok-Videos, die Shop-Abteilung sucht Produkte, rechnet, schreibt und baut deinen Shop. Alles landet bei dir zur Freigabe.</p>
     <div class="chips">
       <span class="chip live" id="mode">Nachgespielt mit echten Videos</span>
       <span class="chip"><b id="waiting">114</b> warten auf Freigabe</span>
-      <span class="chip"><b>8</b> Animationsarten</span>
+      <span class="chip"><b>20</b> KI-Arbeiter</span>
+      <span class="chip"><b id="shopWaiting">0</b> Produkte zur Freigabe</span>
       <span class="chip"><b>1080×1920</b> · 60 fps</span>
     </div>
   </header>
@@ -272,7 +280,7 @@ h1 span { color: var(--jarvis); }
     <section class="room you" style="--c: var(--you)">
       <div class="who"><h2>Du</h2><span>Freigabe</span></div>
       <div class="state">entscheidest</div>
-      <p class="bubble"><b id="youWaiting">114</b> Videos warten auf dein OK – im Dashboard oder per SMS „OK 130“.</p>
+      <p class="bubble"><b id="youWaiting">114</b> Videos und <b id="youShop">0</b> Produkte warten auf dein OK – im Dashboard oder per SMS „OK 130“ bzw. „OK P1“.</p>
       <svg viewBox="0 0 200 150" role="img" aria-label="Handy mit Freigabe-Haken">
         <rect x="70" y="14" width="60" height="112" rx="12" fill="#0b0a1c" stroke="var(--c)" stroke-width="3"/>
         <rect x="80" y="30" width="40" height="70" rx="4" fill="#221e46"/>
@@ -294,6 +302,66 @@ h1 span { color: var(--jarvis); }
 <script>
 (() => {
   const NAMES = { jarvis: "Jarvis", scout: "Scout", writer: "Designer", producer: "Animator", publisher: "Uploader", analyst: "Analyst" };
+  // Shop-Abteilung: 14 Arbeiter, gleiche Roboter, eigene Werkzeuge
+  const DEPTS = [
+    ["Einkauf", "Produkte finden, prüfen, kalkulieren", [
+      ["productscout", "Produkt-Scout", "Ideen", "Sucht Produkte mit guter Marge."],
+      ["buyer", "Einkäufer", "Lieferant", "Prüft Lieferant, Versand und Zoll."],
+      ["calculator", "Kalkulator", "Preis", "Rechnet Preis und Gewinn."],
+      ["safety", "Produktprüfer", "Sicherheit", "Sortiert Riskantes aus."]]],
+    ["Website", "Shop aufbauen und pflegen", [
+      ["webdesigner", "Webdesigner", "Shop", "Baut Startseite und Kategorien."],
+      ["copywriter", "Produkttexter", "Texte", "Schreibt die Produktseiten."],
+      ["seo", "SEO-Experte", "Google", "Macht den Shop auffindbar."],
+      ["legal", "Rechts-Check", "Pflichten", "Prüft Impressum und Widerruf."],
+      ["shopsync", "Shop-Verwalter", "Shopify", "Stellt Freigegebenes online."]]],
+    ["Marketing", "Kunden in den Shop holen", [
+      ["ads", "Werbe-Manager", "Anzeigen", "Plant Videos, gibt nichts ohne Budget aus."],
+      ["email", "E-Mail-Marketing", "Newsletter", "Schreibt Mails an Kunden."]]],
+    ["Betrieb", "Bestellungen, Service, Zahlen", [
+      ["orders", "Bestell-Manager", "Versand", "Behält jede Bestellung im Blick."],
+      ["support", "Kundenservice", "Fragen", "Beantwortet Kundenfragen."],
+      ["accountant", "Buchhalter", "Zahlen", "Rechnet Umsatz und Gewinn."]]],
+  ];
+  const STEEL = "var(--steel)";
+  const PROPS = {
+    productscout: '<rect x="128" y="90" width="52" height="32" rx="4" fill="var(--c)" opacity=".85"/><path d="M128 100h52M154 90v10" stroke="#0b0a1c" stroke-width="2"/><g class="anim lens"><circle cx="148" cy="50" r="14" fill="#0b0a1c" stroke="' + STEEL + '" stroke-width="5"/><rect x="157" y="60" width="7" height="22" rx="3" fill="' + STEEL + '" transform="rotate(-40 160 70)"/></g>',
+    buyer: '<path d="M122 36h12l10 46h40l8-30h-55" fill="none" stroke="' + STEEL + '" stroke-width="4" stroke-linejoin="round"/><circle cx="150" cy="94" r="6" fill="var(--c)"/><circle cx="178" cy="94" r="6" fill="var(--c)"/><rect class="anim bar" x="148" y="58" width="14" height="20" rx="2" fill="var(--c)"/><rect class="anim bar b3" x="166" y="62" width="12" height="16" rx="2" fill="#ffd36a"/>',
+    calculator: '<rect x="128" y="22" width="58" height="88" rx="8" fill="#0b0a1c" stroke="#2c2753" stroke-width="2"/><rect x="136" y="30" width="42" height="18" rx="3" fill="var(--c)" opacity=".9"/><g fill="#2c2753"><rect x="136" y="56" width="11" height="10" rx="2"/><rect x="151" y="56" width="11" height="10" rx="2"/><rect x="166" y="56" width="11" height="10" rx="2"/><rect x="136" y="72" width="11" height="10" rx="2"/><rect x="151" y="72" width="11" height="10" rx="2"/><rect x="136" y="88" width="11" height="10" rx="2"/><rect x="151" y="88" width="11" height="10" rx="2"/></g><rect class="anim blinker" x="166" y="72" width="11" height="26" rx="2" fill="var(--c)"/>',
+    safety: '<path d="M158 24l28 11v22c0 24-15 37-28 43-13-6-28-19-28-43V35z" fill="#0b0a1c" stroke="var(--c)" stroke-width="4" stroke-linejoin="round"/><path class="anim blinker" d="M145 60l9 9 18-20" fill="none" stroke="#4fe3a1" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>',
+    webdesigner: '<rect x="120" y="24" width="74" height="62" rx="7" fill="#0b0a1c" stroke="#2c2753" stroke-width="2"/><rect x="120" y="24" width="74" height="11" rx="5" fill="#2c2753"/><circle cx="128" cy="29.5" r="2" fill="#ff8f8f"/><circle cx="135" cy="29.5" r="2" fill="#ffd36a"/><rect class="anim bar" x="128" y="42" width="26" height="22" rx="3" fill="var(--c)"/><rect x="159" y="42" width="27" height="6" rx="3" fill="#a29ccc"/><rect x="159" y="52" width="20" height="6" rx="3" fill="#a29ccc"/><rect x="128" y="69" width="58" height="10" rx="3" fill="#221e46"/>',
+    copywriter: '<rect x="128" y="22" width="56" height="74" rx="5" fill="#efeaff"/><path class="anim sketch" d="M136 38h40M136 48h34M136 58h40M136 68h28M136 78h36" stroke="#a29ccc" stroke-width="3" stroke-linecap="round" fill="none"/><g class="anim pencil"><rect x="170" y="70" width="8" height="34" rx="3" fill="var(--c)" transform="rotate(30 174 87)"/></g>',
+    seo: '<rect class="anim bar" x="132" y="70" width="12" height="30" rx="2" fill="var(--c)" opacity=".6"/><rect class="anim bar b2" x="150" y="56" width="12" height="44" rx="2" fill="var(--c)" opacity=".8"/><rect class="anim bar b3" x="168" y="38" width="12" height="62" rx="2" fill="var(--c)"/><path d="M128 64l20-16 16 8 22-24" fill="none" stroke="' + STEEL + '" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M176 30h11v11" fill="none" stroke="' + STEEL + '" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>',
+    legal: '<rect x="128" y="22" width="56" height="76" rx="6" fill="#0b0a1c" stroke="#2c2753" stroke-width="2"/><text x="156" y="78" text-anchor="middle" font-family="Fredoka, sans-serif" font-size="56" font-weight="600" fill="var(--c)">§</text><circle class="anim blinker" cx="178" cy="30" r="4" fill="#4fe3a1"/>',
+    shopsync: '<path d="M138 82h44a14 14 0 0 0 0-28 20 20 0 0 0-38-6 15 15 0 0 0-6 34z" fill="#0b0a1c" stroke="var(--c)" stroke-width="4" stroke-linejoin="round"/><g class="anim carry"><path d="M158 100V66M148 76l10-10 10 10" fill="none" stroke="' + STEEL + '" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></g>',
+    ads: '<path d="M130 56l34-18v52l-34-18z" fill="var(--c)"/><rect x="122" y="54" width="10" height="22" rx="3" fill="' + STEEL + '"/><rect x="132" y="74" width="9" height="20" rx="3" fill="' + STEEL + '" transform="rotate(-12 136 84)"/><g class="anim blinker" fill="none" stroke="var(--c)" stroke-width="3.5" stroke-linecap="round"><path d="M172 50a18 18 0 0 1 0 30"/><path d="M180 42a28 28 0 0 1 0 46"/></g>',
+    email: '<rect x="126" y="44" width="58" height="40" rx="5" fill="#efeaff"/><path d="M126 48l29 20 29-20" fill="none" stroke="#a29ccc" stroke-width="3"/><g class="anim carry"><rect x="132" y="20" width="26" height="18" rx="3" fill="var(--c)"/><path d="M132 23l13 9 13-9" fill="none" stroke="#0b0a1c" stroke-width="2"/></g>',
+    orders: '<g class="anim carry"><rect x="126" y="56" width="44" height="38" rx="4" fill="#c99a5b"/><path d="M126 68h44M148 56v12" stroke="#8a6232" stroke-width="3"/></g><rect x="138" y="100" width="54" height="10" rx="5" fill="var(--c)" opacity=".6"/>',
+    support: '<path d="M126 30h60a8 8 0 0 1 8 8v34a8 8 0 0 1-8 8h-36l-14 14v-14h-10a8 8 0 0 1-8-8V38a8 8 0 0 1 8-8z" fill="#0b0a1c" stroke="var(--c)" stroke-width="3.5" stroke-linejoin="round"/><circle class="anim blinker" cx="142" cy="55" r="4.5" fill="var(--c)"/><circle class="anim blinker" cx="156" cy="55" r="4.5" fill="var(--c)" style="animation-delay:.3s"/><circle class="anim blinker" cx="170" cy="55" r="4.5" fill="var(--c)" style="animation-delay:.6s"/>',
+    accountant: '<rect x="126" y="98" width="64" height="3" fill="#2c2753"/><rect class="anim bar" x="130" y="70" width="11" height="28" rx="2" fill="var(--c)" opacity=".55"/><rect class="anim bar b2" x="146" y="58" width="11" height="40" rx="2" fill="var(--c)" opacity=".75"/><rect class="anim bar b4" x="162" y="46" width="11" height="52" rx="2" fill="var(--c)"/><circle cx="180" cy="30" r="12" fill="#ffd36a"/><text x="180" y="35" text-anchor="middle" font-family="Fredoka, sans-serif" font-size="14" font-weight="600" fill="#5a3d00">€</text>',
+  };
+  const ROBOT = '<g class="hover"><ellipse cx="80" cy="138" rx="22" ry="4" fill="var(--c)" opacity=".45"/><rect x="56" y="80" width="48" height="44" rx="19" fill="var(--c)"/><circle class="blinker" cx="80" cy="102" r="5" fill="#fff" opacity=".8"/><rect x="52" y="40" width="56" height="42" rx="17" fill="var(--steel)"/><rect x="59" y="50" width="42" height="19" rx="9.5" fill="var(--visor)"/><circle class="eye" cx="72" cy="60" r="4" fill="var(--c)"/><circle class="eye" cx="88" cy="60" r="4" fill="var(--c)"/><line x1="80" y1="40" x2="80" y2="29" stroke="var(--steel)" stroke-width="3"/><circle class="blinker" cx="80" cy="27" r="4" fill="var(--c)"/><rect x="100" y="88" width="20" height="8" rx="4" fill="var(--c)" transform="rotate(-30 100 92)"/></g>';
+  const anchor = document.querySelector(".room.you");
+  for (const [dept, about, workers] of DEPTS) {
+    const head = document.createElement("div");
+    head.className = "dept";
+    head.innerHTML = `<h2>${dept}</h2><span>${about}</span>`;
+    anchor.before(head);
+    for (const [key, name, tag, job] of workers) {
+      NAMES[key] = name;
+      const room = document.createElement("section");
+      room.className = "room";
+      room.dataset.w = key;
+      room.style.setProperty("--c", `var(--${key})`);
+      room.innerHTML = `<div class="who"><h2>${name}</h2><span>${tag}</span></div><div class="state">wartet</div>`
+        + `<p class="bubble">${job}</p><svg viewBox="0 0 200 150" role="img" aria-label="${name}">${PROPS[key]}${ROBOT}</svg>`;
+      anchor.before(room);
+    }
+  }
+  const youHead = document.createElement("div");
+  youHead.className = "dept";
+  youHead.innerHTML = "<h2>Du</h2><span>gibst frei, was online geht</span>";
+  anchor.before(youHead);
   const rooms = {};
   document.querySelectorAll(".room[data-w]").forEach((r) => { rooms[r.dataset.w] = r; });
   const $ = (id) => document.getElementById(id);
@@ -351,9 +419,57 @@ h1 span { color: var(--jarvis); }
   // Echte Videos aus dem Studio (Stand 27.11.2026) – so sind sie entstanden
   const VIDEOS = __VIDEOS__;
 
+  // Echte Produkte aus der ersten Shop-Runde
+  const SHOP = __SHOP__;
+  if (SHOP.length) { $("shopWaiting").textContent = SHOP.length; $("youShop").textContent = SHOP.length; }
+  let shopTurn = 0;
+
+  async function shopRound() {
+    const p = SHOP[shopTurn++ % SHOP.length];
+    say("jarvis", "Shop-Runde: Wir brauchen neue Produkte für den Shop.");
+    await sleep(2200);
+    idle("jarvis");
+    say("productscout", `Gefunden: ${p.name} (${p.collection}).`);
+    await sleep(2600);
+    say("productscout", "Übergeben an den Einkauf.", false, false);
+    say("buyer", `${p.name}: Lieferant mit EU-Lager, ${p.cost} Einkauf, Lieferzeit ${p.days} Tage.`);
+    await sleep(2600);
+    idle("buyer");
+    say("safety", p.safety);
+    await sleep(2400);
+    idle("safety");
+    say("calculator", `${p.offer} für ${p.price} – bleibt ${p.profit} Gewinn pro Bestellung.`);
+    await sleep(2800);
+    idle("calculator");
+    say("copywriter", `Produktseite geschrieben: „${p.title}“.`);
+    await sleep(2400);
+    idle("copywriter");
+    say("seo", `Google-Titel: ${p.seo}`);
+    await sleep(2200);
+    idle("seo");
+    say("ads", `Video-Idee: ${p.hook}`);
+    await sleep(2800);
+    idle("ads");
+    say("webdesigner", `Kategorie „${p.collection}“ auf der Startseite eingebaut.`);
+    say("legal", "Noch offen: Gewerbe, Impressum, Rechtstexte.");
+    await sleep(2400);
+    idle("webdesigner", "legal");
+    say("shopsync", "Liegt in der Shopify-Importdatei – wartet auf deinen Shop-Zugang.");
+    say("email", "Willkommensmail und Newsletter sind vorbereitet.");
+    await sleep(2400);
+    idle("shopsync", "email");
+    say("orders", "Noch keine Bestellungen – ich bin bereit.", false);
+    say("support", "FAQ mit 6 Antworten steht.", false);
+    say("accountant", "Noch kein Umsatz – ich zähle ab der ersten Bestellung.", false);
+    say("jarvis", `${p.name} wartet auf deine Freigabe: „OK P${p.id}“.`);
+    await sleep(2600);
+    idle("jarvis");
+  }
+
   async function demo() {
     for (;;) {
-      for (const v of VIDEOS) {
+      for (const [i, v] of VIDEOS.entries()) {
+        if (SHOP.length && i % 2 === 0) await shopRound();
         $("conceptName").textContent = v.label;
         $("grade").style.opacity = "0";
         say("jarvis", `Neue Runde: ${v.label}. Scout, was läuft gerade?`);
@@ -412,6 +528,7 @@ h1 span { color: var(--jarvis); }
         }
         if (data.waiting != null) $("waiting").textContent = data.waiting;
         if (data.waiting != null) { $("stackNo").textContent = data.waiting; $("youWaiting").textContent = data.waiting; }
+        if (data.shop) { $("shopWaiting").textContent = data.shop.wartet || 0; $("youShop").textContent = data.shop.wartet || 0; }
         if (data.render) {
           $("renderNo").textContent = data.render.no;
           $("renderBar").setAttribute("width", (58 * data.render.progress).toFixed(1));
