@@ -1,5 +1,6 @@
 """Alle Animationsarten, die Jarvis' Animator beherrscht."""
 
+from content_crew.animation.scenes.adventure import Adventure
 from content_crew.animation.scenes.arena import SpinArena
 from content_crew.animation.scenes.colorwar import ColorWars
 from content_crew.animation.scenes.dino import DinoTrip
@@ -11,6 +12,6 @@ from content_crew.animation.scenes.rings import RingEscape
 from content_crew.animation.scenes.strings import StringArt
 
 SCENES = {cls.name: cls for cls in (RingEscape, EscapeMultiply, GrowingBall, ColorWars, Polyrhythm, Galton,
-                                     SpinArena, StringArt, DinoTrip)}
+                                     SpinArena, StringArt, DinoTrip, Adventure)}
 
 __all__ = ["SCENES"]

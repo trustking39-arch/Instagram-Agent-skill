@@ -52,6 +52,19 @@ ersten Mal von GitHub geladen):
 content-crew animate --type dino_trip --duration 58
 ```
 
+**Story-Serie „24 Hours In …“ (auf Wunsch):** Das Skelett verbringt 24 Stunden in einer von sieben Welten –
+Eiszeit, Arktis, Altes Ägypten, Dschungel, Savanne, Mittelalter, Wilder Westen – und erzählt auf Englisch. Jede Folge
+hat denselben Spannungsbogen: sanfter Riese (Mammut, Giraffe, Kamel …), Raubtier-Verfolgung (Säbelzahntiger,
+Eisbär, Krokodil, Jaguar, Löwe, Drache, Bison-Herde), Versteck, Unwetter (Schneesturm, Sandsturm, Tropenregen,
+Gewitter, Staubsturm), Herde im Sonnenuntergang, Nacht unter Polarlicht, Sternen oder Glühwürmchen, Portal nach
+Hause. Am Ende kommt ein Jungtier mit (`ending: pet`) oder leuchtende Augen erscheinen im Portal (`ending: eyes`,
+Cliffhanger für Teil 2). `variant` wechselt die Formulierungen und Landschaften. Die Tiere stammen aus einem
+Baukasten (`content_crew/animation/creatures.py`), der aus Körperproportionen und Extras Schattenrisse zeichnet.
+
+```bash
+content-crew animate --type adventure --duration 56
+```
+
 Jeder Aufprall spielt einen Ton – auf Wunsch Note für Note eine **gemeinfreie Melodie** (Für Elise, Ode an die
 Freude, Bergkönig, Kanon in D, Jingle Bells, Stille Nacht …), damit TikTok den Ton nicht sperrt. Der Höhepunkt wird
 automatisch auf die gewünschte Länge abgestimmt (die Physik wird vorab durchgerechnet). Selbst ausprobieren ohne KI:

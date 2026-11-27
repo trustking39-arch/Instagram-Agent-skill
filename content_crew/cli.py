@@ -348,7 +348,7 @@ def main(argv: list[str] | None = None) -> None:
     p.set_defaults(func=cmd_batch)
     p = sub.add_parser("animate", help="ohne KI ein Animationsvideo rendern (Test der Engine)")
     p.add_argument("--type", choices=["ring_escape", "escape_multiply", "growing_ball", "color_wars", "polyrhythm",
-                                      "galton", "spin_arena", "string_art", "dino_trip"])
+                                      "galton", "spin_arena", "string_art", "dino_trip", "adventure"])
     p.add_argument("--count", type=int, default=1)
     p.add_argument("--palette")
     p.add_argument("--music")

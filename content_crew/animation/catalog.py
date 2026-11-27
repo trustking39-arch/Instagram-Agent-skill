@@ -101,6 +101,20 @@ TYPES: dict[str, dict] = {
         "tags": ["#dinosaurier", "#zeitreise", "#trex", "#animation", "#waswärewenn"],
         "tags_en": ["#dinosaur", "#timetravel", "#trex", "#animation", "#whatif"],
     },
+    "adventure": {
+        "label": "24 Stunden in …",
+        "story": True,  # Geschichte: nur auf Wunsch, nicht in der normalen Rotation
+        "query": "what if you spent 24 hours in the ice age jungle arctic",
+        "idee": "Das leuchtende Skelett verbringt 24 Stunden in einer anderen Welt (Eiszeit, Arktis, Ägypten, "
+                "Dschungel, Savanne, Mittelalter, Wilder Westen): sanfter Riese, Raubtier-Verfolgung, Versteck, "
+                "Unwetter, Herde im Sonnenuntergang, Nacht – und am Ende kommt etwas mit nach Hause. Englische "
+                "Erzählung, Silhouetten-Stil.",
+        "params": {"world": ["iceage", "arctic", "egypt", "jungle", "savanna", "medieval", "wildwest"],
+                   "variant": (0, 99, 0), "ending": ["pet", "eyes"], "lang": ["en"]},
+        "caption": "What if you spent 24 hours in another world? Would you survive?",
+        "tags": ["#waswärewenn", "#animation", "#zeitreise", "#24stunden", "#skelett"],
+        "tags_en": ["#whatif", "#animation", "#timetravel", "#24hours", "#skeleton"],
+    },
 }
 
 MELODY_LABELS = {
@@ -123,10 +137,10 @@ LOW_VALUE_TAGS = {"#fyp", "#foryou", "#foryoupage", "#fy", "#viral", "#fürdich"
                   "#xyzbca", "#explore", "#tiktok"}
 MAX_TAGS = 5
 # Bei diesen Arten spielt jeder Punkt/jedes Team eigene Töne – eine Melodie passt dort nicht.
-SCALE_ONLY = {"polyrhythm", "color_wars", "galton", "dino_trip"}
+SCALE_ONLY = {"polyrhythm", "color_wars", "galton", "dino_trip", "adventure"}
 DEFAULT_SOUND = {"ring_escape": "bell", "escape_multiply": "glass", "growing_ball": "pluck",
                  "color_wars": "marimba", "polyrhythm": "glass", "galton": "kalimba", "spin_arena": "bell",
-                 "string_art": "glass", "dino_trip": "pluck"}
+                 "string_art": "glass", "dino_trip": "pluck", "adventure": "pluck"}
 
 
 # --- Texte: saubere, abwechslungsreiche Vorlagen (das kleine Sprachmodell schreibt oft holpriges Deutsch) ---
@@ -203,6 +217,10 @@ def make_text(kind: str, params: dict, music: str | None, seed: int) -> tuple[st
     rng = random.Random(seed * 31 + 7)
     values = {**params, "shape": SHAPES.get(int(params.get("sides", 6) or 6), "Vieleck")}
     song = SONGS.get(music or "")
+    if kind == "adventure":
+        from content_crew.animation.worlds import title_caption
+
+        return title_caption(params.get("world", "iceage"), params.get("ending", "pet"), int(params.get("variant") or 0))
     if kind == "dino_trip" and params.get("lang") == "en":
         return ("24 Hours With The Dinosaurs", "I spent 24 hours with the dinosaurs… and one followed me home 🦖🦴 "
                 "What should I name him?" if params.get("ending") == "haustier" else
