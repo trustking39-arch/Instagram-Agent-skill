@@ -24,7 +24,8 @@ STATUS_LABEL = {
     "published": "veröffentlicht", "rejected": "verworfen", "failed": "Fehler",
 }
 
-CSS = """
+CSS = """.btn{display:inline-block;padding:8px 14px;border-radius:10px;background:var(--accent);color:#fff;text-decoration:none;font-weight:600}
+
 :root{--bg:#f6f7f9;--card:#fff;--text:#16181d;--muted:#5f6673;--line:#e3e6eb;--accent:#4f46e5;
 --ok:#15803d;--warn:#b45309;--bad:#b91c1c;--chip:#eef0f4}
 @media (prefers-color-scheme:dark){:root{--bg:#0f1115;--card:#171a21;--text:#e8eaf0;--muted:#9aa3b2;
@@ -141,6 +142,7 @@ def render(cfg: Config, db: DB) -> str:
 {f"· nächste in {next_in} Min." if next_in is not None and not paused else ""}</p>
 <p class="sub">{e(status_text(db))}</p></div>
 <div class="actions">{_cmd("START", "Weiter", True) if paused else _cmd("STOP", "Pausieren")}
+<a class="btn" href="/team">Team-Büro live ansehen</a>
 <form method="post" action="/logout"><button>Abmelden</button></form></div></div>
 
 <h2>Team</h2><div class="grid" id="team">{"".join(team)}</div>

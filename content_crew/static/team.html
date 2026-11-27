@@ -1,0 +1,427 @@
+<title>Jarvis Studio</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: ein Studio bei Nacht – oben Jarvis' Pult, darunter die Räume der Arbeiter, unten das Funkprotokoll */
+:root {
+  color-scheme: dark;
+  --bg: #0d0b1e;
+  --room: #16132c;
+  --room-on: #1d1940;
+  --line: #2c2753;
+  --fg: #ece9ff;
+  --muted: #a29ccc;
+  --steel: #efeaff;
+  --visor: #141128;
+  --jarvis: #3fdcff;
+  --scout: #ffb547;
+  --writer: #ff6fb5;
+  --producer: #a183ff;
+  --publisher: #4fe3a1;
+  --analyst: #ff8a62;
+  --you: #ffd36a;
+  --font-display: "Fredoka", "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font: 15px/1.5 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+.wrap { max-width: 1040px; margin: 0 auto; display: grid; gap: 16px; }
+header { display: grid; gap: 10px; }
+h1 { font: 600 clamp(28px, 7vw, 40px)/1.1 var(--font-display); margin: 0; letter-spacing: .3px; text-wrap: balance; }
+h1 span { color: var(--jarvis); }
+.sub { margin: 0; color: var(--muted); max-width: 62ch; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font: 500 12px/1 var(--font-mono); padding: 7px 10px; border-radius: 999px; background: var(--room); border: 1px solid var(--line); color: var(--muted); font-variant-numeric: tabular-nums; }
+.chip b { color: var(--fg); font-weight: 500; }
+.chip.live::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--publisher); margin-right: 6px; vertical-align: 1px; animation: blink 1.6s infinite; }
+
+.room { position: relative; background: var(--room); border: 1px solid var(--line); border-radius: 18px; padding: 12px 12px 6px; display: grid; gap: 6px; min-width: 0; transition: background .4s, border-color .4s, box-shadow .4s; }
+.room.on { background: var(--room-on); border-color: color-mix(in srgb, var(--c) 55%, var(--line)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 25%, transparent), 0 10px 40px -12px color-mix(in srgb, var(--c) 55%, transparent); }
+.who { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.who h2 { font: 600 18px/1.2 var(--font-display); margin: 0; color: var(--c); }
+.who span { font: 500 11px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.state { font: 500 11px/1 var(--font-mono); color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.state::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
+.room.on .state { color: var(--c); }
+.room.on .state::before { background: var(--c); animation: blink 1s infinite; }
+.bubble { position: relative; margin: 2px 0 0; padding: 8px 11px; border-radius: 12px; background: #221e46; color: var(--fg); font-size: 13.5px; line-height: 1.35; min-height: 2.7em; overflow-wrap: anywhere; }
+.room.on .bubble { background: color-mix(in srgb, var(--c) 18%, #221e46); }
+.bubble::after { content: ""; position: absolute; left: 22px; bottom: -7px; border: 7px solid transparent; border-bottom: 0; border-top-color: #221e46; }
+.room.on .bubble::after { border-top-color: color-mix(in srgb, var(--c) 18%, #221e46); }
+.room svg { width: 100%; height: auto; display: block; }
+
+.boss { grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 720px) { .boss { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: center; column-gap: 18px; } }
+.grid { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 760px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+.feed { grid-column: 1 / -1; background: var(--room); border: 1px solid var(--line); border-radius: 18px; padding: 14px; min-width: 0; }
+.feed h3 { margin: 0 0 8px; font: 600 15px/1.2 var(--font-display); color: var(--muted); letter-spacing: .02em; }
+.feed ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font: 400 12.5px/1.4 var(--font-mono); }
+.feed li { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 8px; color: var(--muted); }
+.feed li b { color: var(--c); font-weight: 500; }
+.feed li span { color: var(--fg); overflow-wrap: anywhere; }
+.note { color: var(--muted); font-size: 13px; margin: 0; }
+.note code { font: 500 12.5px var(--font-mono); color: var(--fg); background: var(--room); padding: 2px 6px; border-radius: 6px; user-select: all; }
+
+/* Animationen: laufen nur im Raum, der gerade arbeitet */
+.anim { animation-play-state: paused; }
+.room.on .anim { animation-play-state: running; }
+.hover { animation: hover 2.4s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+.blinker { animation: blink 1.2s infinite; }
+.eye { animation: look 5s infinite; transform-box: fill-box; transform-origin: center; }
+.scope { animation: scope 3s ease-in-out infinite; transform-box: view-box; transform-origin: 112px 74px; }
+.trend { animation: trend 3.2s linear infinite; }
+.trend.t2 { animation-delay: -1.1s; } .trend.t3 { animation-delay: -2.2s; }
+.sketch { stroke-dasharray: 260; animation: draw 4s linear infinite; }
+.pencil { animation: pencil .9s ease-in-out infinite; transform-box: view-box; transform-origin: 118px 92px; }
+.reel { animation: spin 1.6s linear infinite; transform-box: fill-box; transform-origin: center; }
+.carry { animation: carry 2.6s ease-in-out infinite; }
+.bar { animation: bar 1.8s ease-in-out infinite; transform-box: fill-box; transform-origin: bottom; }
+.bar.b2 { animation-delay: -.4s; } .bar.b3 { animation-delay: -.9s; } .bar.b4 { animation-delay: -1.3s; }
+.lens { animation: lens 3.4s ease-in-out infinite; }
+.stamp { animation: stamp 1.4s ease-in infinite; transform-box: fill-box; transform-origin: center; }
+.grade { transition: opacity .3s, transform .3s; transform-box: fill-box; transform-origin: center; }
+@keyframes hover { 50% { transform: translateY(-4px); } }
+@keyframes blink { 50% { opacity: .25; } }
+@keyframes look { 0%, 40%, 100% { transform: translateX(0); } 50%, 85% { transform: translateX(3px); } }
+@keyframes scope { 50% { transform: rotate(-9deg); } }
+@keyframes trend { from { transform: translateX(70px); opacity: 0; } 15% { opacity: 1; } 85% { opacity: 1; } to { transform: translateX(-6px); opacity: 0; } }
+@keyframes draw { from { stroke-dashoffset: 260; } 75%, to { stroke-dashoffset: 0; } }
+@keyframes pencil { 50% { transform: rotate(-12deg); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes carry { 0% { transform: translate(0, 0); opacity: 0; } 15% { opacity: 1; } 60% { transform: translate(38px, -18px); opacity: 1; } 80%, 100% { transform: translate(44px, 0); opacity: 0; } }
+@keyframes bar { 50% { transform: scaleY(.45); } }
+@keyframes lens { 50% { transform: translate(26px, -6px); } }
+@keyframes stamp { 0%, 55% { transform: translateY(-16px); } 70% { transform: translateY(2px); } 100% { transform: translateY(-16px); } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1><span>Jarvis</span> Studio</h1>
+    <p class="sub" id="sub">So arbeitet dein Team: Jarvis plant und prüft, die Arbeiter suchen Trends, entwerfen, animieren und legen fertige Videos zur Freigabe bereit.</p>
+    <div class="chips">
+      <span class="chip live" id="mode">Nachgespielt mit echten Videos</span>
+      <span class="chip"><b id="waiting">114</b> warten auf Freigabe</span>
+      <span class="chip"><b>8</b> Animationsarten</span>
+      <span class="chip"><b>1080×1920</b> · 60 fps</span>
+    </div>
+  </header>
+
+  <section class="room boss" data-w="jarvis" style="--c: var(--jarvis)">
+    <div style="display:grid;gap:6px;min-width:0">
+      <div class="who"><h2>Jarvis</h2><span>Chef</span></div>
+      <div class="state">wartet</div>
+      <p class="bubble">Guten Abend. Ich verteile gleich die nächste Runde.</p>
+    </div>
+    <svg viewBox="0 0 320 150" role="img" aria-label="Jarvis am Prüfpult">
+      <rect x="150" y="60" width="160" height="70" rx="12" fill="#100e24" stroke="#2c2753"/>
+      <rect x="164" y="74" width="62" height="42" rx="6" fill="#0b0a1c" stroke="#2c2753"/>
+      <text x="195" y="92" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#a29ccc">KONZEPT</text>
+      <text id="conceptName" x="195" y="106" text-anchor="middle" font-family="Fredoka, sans-serif" font-size="9.5" fill="#ece9ff">Ring-Flucht</text>
+      <g class="anim stamp"><rect x="246" y="58" width="44" height="10" rx="3" fill="var(--c)"/><rect x="262" y="44" width="12" height="16" rx="4" fill="#efeaff"/></g>
+      <g id="grade" class="grade" style="opacity:0"><circle cx="268" cy="96" r="18" fill="none" stroke="var(--c)" stroke-width="3"/><text id="gradeText" x="268" y="100" text-anchor="middle" font-family="Fredoka, sans-serif" font-size="12" font-weight="600" fill="var(--c)">8/10</text></g>
+      <g class="hover"><g transform="translate(-10 0) scale(1.08)">
+        <ellipse cx="100" cy="138" rx="26" ry="4" fill="var(--c)" opacity=".45"/>
+        <rect x="74" y="78" width="52" height="48" rx="20" fill="var(--c)"/>
+        <circle class="blinker" cx="100" cy="101" r="6" fill="#fff" opacity=".85"/>
+        <rect x="70" y="36" width="60" height="44" rx="18" fill="var(--steel)"/>
+        <rect x="77" y="47" width="46" height="20" rx="10" fill="var(--visor)"/>
+        <circle class="eye" cx="91" cy="57" r="4.2" fill="var(--c)"/><circle class="eye" cx="109" cy="57" r="4.2" fill="var(--c)"/>
+        <path d="M66 58 A34 34 0 0 1 134 58" fill="none" stroke="var(--c)" stroke-width="4"/>
+        <rect x="128" y="54" width="8" height="14" rx="3" fill="var(--c)"/>
+        <line x1="100" y1="36" x2="100" y2="24" stroke="var(--steel)" stroke-width="3"/><circle class="blinker" cx="100" cy="22" r="4.5" fill="var(--c)"/>
+        <rect x="124" y="88" width="34" height="9" rx="4.5" fill="var(--c)" transform="rotate(-18 124 92)"/>
+      </g></g>
+    </svg>
+  </section>
+
+  <div class="grid">
+    <section class="room" data-w="scout" style="--c: var(--scout)">
+      <div class="who"><h2>Scout</h2><span>Trends</span></div>
+      <div class="state">wartet</div>
+      <p class="bubble">Bereit zum Suchen.</p>
+      <svg viewBox="0 0 200 150" role="img" aria-label="Scout mit Fernrohr">
+        <rect x="120" y="16" width="70" height="56" rx="8" fill="#0b0a1c" stroke="#2c2753"/>
+        <circle cx="134" cy="28" r="1.4" fill="#fff"/><circle cx="168" cy="24" r="1" fill="#fff"/><circle cx="182" cy="40" r="1.3" fill="#fff"/><circle cx="150" cy="58" r="1" fill="#fff"/>
+        <g class="anim trend"><rect x="122" y="30" width="22" height="13" rx="4" fill="var(--c)" opacity=".9"/><path d="M130 33 l6 3.5 -6 3.5z" fill="#0b0a1c"/></g>
+        <g class="anim trend t2"><rect x="122" y="48" width="22" height="13" rx="4" fill="#ff6fb5" opacity=".9"/><path d="M130 51 l6 3.5 -6 3.5z" fill="#0b0a1c"/></g>
+        <g class="anim trend t3"><rect x="122" y="22" width="18" height="11" rx="4" fill="#4fe3a1" opacity=".9"/><path d="M128 24.5 l5 3 -5 3z" fill="#0b0a1c"/></g>
+        <g class="anim scope"><rect x="104" y="62" width="44" height="12" rx="5" fill="#efeaff" transform="rotate(-28 112 74)"/><rect x="138" y="44" width="10" height="16" rx="3" fill="var(--c)" transform="rotate(-28 112 74)"/></g>
+        <g class="hover">
+          <ellipse cx="80" cy="138" rx="22" ry="4" fill="var(--c)" opacity=".45"/>
+          <rect x="56" y="80" width="48" height="44" rx="19" fill="var(--c)"/>
+          <circle class="blinker" cx="80" cy="102" r="5" fill="#fff" opacity=".8"/>
+          <rect x="52" y="40" width="56" height="42" rx="17" fill="var(--steel)"/>
+          <rect x="59" y="50" width="42" height="19" rx="9.5" fill="var(--visor)"/>
+          <circle class="eye" cx="72" cy="60" r="4" fill="var(--c)"/><circle class="eye" cx="88" cy="60" r="4" fill="var(--c)"/>
+          <line x1="80" y1="40" x2="80" y2="29" stroke="var(--steel)" stroke-width="3"/><circle class="blinker" cx="80" cy="27" r="4" fill="var(--c)"/>
+          <rect x="100" y="88" width="20" height="8" rx="4" fill="var(--c)" transform="rotate(-30 100 92)"/>
+        </g>
+      </svg>
+    </section>
+
+    <section class="room" data-w="writer" style="--c: var(--writer)">
+      <div class="who"><h2>Designer</h2><span>Konzept</span></div>
+      <div class="state">wartet</div>
+      <p class="bubble">Mein Skizzenblock ist leer.</p>
+      <svg viewBox="0 0 200 150" role="img" aria-label="Designer an der Staffelei">
+        <line x1="140" y1="74" x2="128" y2="140" stroke="#2c2753" stroke-width="4"/><line x1="176" y1="74" x2="188" y2="140" stroke="#2c2753" stroke-width="4"/>
+        <rect x="124" y="18" width="68" height="58" rx="5" fill="#f4f1ff"/>
+        <circle class="anim sketch" cx="158" cy="47" r="20" fill="none" stroke="var(--c)" stroke-width="3"/>
+        <circle class="anim sketch" cx="158" cy="47" r="12" fill="none" stroke="#a183ff" stroke-width="3" style="animation-delay:-1.5s"/>
+        <circle cx="158" cy="47" r="3" fill="#141128"/>
+        <g class="hover">
+          <ellipse cx="80" cy="138" rx="22" ry="4" fill="var(--c)" opacity=".45"/>
+          <rect x="56" y="80" width="48" height="44" rx="19" fill="var(--c)"/>
+          <circle class="blinker" cx="80" cy="102" r="5" fill="#fff" opacity=".8"/>
+          <rect x="52" y="40" width="56" height="42" rx="17" fill="var(--steel)"/>
+          <rect x="59" y="50" width="42" height="19" rx="9.5" fill="var(--visor)"/>
+          <circle class="eye" cx="72" cy="60" r="4" fill="var(--c)"/><circle class="eye" cx="88" cy="60" r="4" fill="var(--c)"/>
+          <path d="M60 41 q20 -16 40 0" fill="var(--c)"/>
+          <line x1="80" y1="40" x2="80" y2="29" stroke="var(--steel)" stroke-width="3"/><circle class="blinker" cx="80" cy="27" r="4" fill="var(--c)"/>
+          <g class="anim pencil"><rect x="100" y="88" width="26" height="8" rx="4" fill="var(--c)" transform="rotate(-40 100 92)"/><rect x="117" y="64" width="5" height="18" rx="2" fill="#ffd36a" transform="rotate(40 119 72)"/></g>
+        </g>
+      </svg>
+    </section>
+
+    <section class="room" data-w="producer" style="--c: var(--producer)">
+      <div class="who"><h2>Animator</h2><span>Rendern</span></div>
+      <div class="state">wartet</div>
+      <p class="bubble">Grafikkarte? Brauche ich nicht.</p>
+      <svg viewBox="0 0 200 150" role="img" aria-label="Animator am Bildschirm">
+        <rect x="118" y="24" width="74" height="52" rx="7" fill="#0b0a1c" stroke="#2c2753"/>
+        <rect x="150" y="76" width="10" height="16" fill="#2c2753"/><rect x="138" y="90" width="34" height="5" rx="2" fill="#2c2753"/>
+        <text x="126" y="42" font-family="JetBrains Mono, monospace" font-size="8.5" fill="#a29ccc">RENDER</text>
+        <text id="renderNo" x="184" y="42" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="8.5" fill="#ece9ff">#130</text>
+        <rect x="126" y="54" width="58" height="7" rx="3.5" fill="#221e46"/>
+        <rect id="renderBar" x="126" y="54" width="0" height="7" rx="3.5" fill="var(--c)"/>
+        <text id="renderPct" x="126" y="71" font-family="JetBrains Mono, monospace" font-size="8" fill="#a29ccc">0 % · 60 fps</text>
+        <g class="anim reel"><circle cx="30" cy="40" r="18" fill="#221e46" stroke="var(--c)" stroke-width="3"/><circle cx="30" cy="30" r="4" fill="#0d0b1e"/><circle cx="40" cy="40" r="4" fill="#0d0b1e"/><circle cx="30" cy="50" r="4" fill="#0d0b1e"/><circle cx="20" cy="40" r="4" fill="#0d0b1e"/></g>
+        <g class="hover">
+          <ellipse cx="80" cy="138" rx="22" ry="4" fill="var(--c)" opacity=".45"/>
+          <rect x="56" y="80" width="48" height="44" rx="19" fill="var(--c)"/>
+          <circle class="blinker" cx="80" cy="102" r="5" fill="#fff" opacity=".8"/>
+          <rect x="52" y="40" width="56" height="42" rx="17" fill="var(--steel)"/>
+          <rect x="59" y="50" width="42" height="19" rx="9.5" fill="var(--visor)"/>
+          <circle class="eye" cx="72" cy="60" r="4" fill="var(--c)"/><circle class="eye" cx="88" cy="60" r="4" fill="var(--c)"/>
+          <line x1="80" y1="40" x2="80" y2="29" stroke="var(--steel)" stroke-width="3"/><circle class="blinker" cx="80" cy="27" r="4" fill="var(--c)"/>
+          <rect x="100" y="92" width="22" height="8" rx="4" fill="var(--c)"/>
+        </g>
+      </svg>
+    </section>
+
+    <section class="room" data-w="publisher" style="--c: var(--publisher)">
+      <div class="who"><h2>Uploader</h2><span>Freigabe</span></div>
+      <div class="state">wartet</div>
+      <p class="bubble">Ich lade erst hoch, wenn du es freigibst.</p>
+      <svg viewBox="0 0 200 150" role="img" aria-label="Uploader mit Videostapel">
+        <rect x="132" y="108" width="52" height="26" rx="4" fill="#1f5a45" stroke="var(--c)"/>
+        <rect x="136" y="84" width="46" height="24" rx="4" fill="#1f5a45" stroke="var(--c)"/>
+        <rect x="140" y="62" width="40" height="22" rx="4" fill="#1f5a45" stroke="var(--c)"/>
+        <path d="M156 69 l8 4.5 -8 4.5z" fill="var(--c)"/><path d="M154 91 l9 5 -9 5z" fill="var(--c)"/><path d="M152 115 l10 6 -10 6z" fill="var(--c)"/>
+        <text id="stackNo" x="160" y="52" text-anchor="middle" font-family="Fredoka, sans-serif" font-size="15" font-weight="600" fill="var(--c)">114</text>
+        <g class="anim carry"><rect x="96" y="74" width="30" height="20" rx="4" fill="#1f5a45" stroke="var(--c)"/><path d="M108 79 l7 4.5 -7 4.5z" fill="var(--c)"/></g>
+        <g class="hover">
+          <ellipse cx="70" cy="138" rx="22" ry="4" fill="var(--c)" opacity=".45"/>
+          <rect x="46" y="80" width="48" height="44" rx="19" fill="var(--c)"/>
+          <circle class="blinker" cx="70" cy="102" r="5" fill="#fff" opacity=".8"/>
+          <rect x="42" y="40" width="56" height="42" rx="17" fill="var(--steel)"/>
+          <rect x="49" y="50" width="42" height="19" rx="9.5" fill="var(--visor)"/>
+          <circle class="eye" cx="62" cy="60" r="4" fill="var(--c)"/><circle class="eye" cx="78" cy="60" r="4" fill="var(--c)"/>
+          <line x1="70" y1="40" x2="70" y2="29" stroke="var(--steel)" stroke-width="3"/><circle class="blinker" cx="70" cy="27" r="4" fill="var(--c)"/>
+          <rect x="90" y="86" width="22" height="8" rx="4" fill="var(--c)"/>
+        </g>
+      </svg>
+    </section>
+
+    <section class="room" data-w="analyst" style="--c: var(--analyst)">
+      <div class="who"><h2>Analyst</h2><span>Zahlen</span></div>
+      <div class="state">wartet</div>
+      <p class="bubble">Noch ist nichts online – ich warte auf die ersten Aufrufe.</p>
+      <svg viewBox="0 0 200 150" role="img" aria-label="Analyst an der Diagrammtafel">
+        <rect x="116" y="18" width="76" height="62" rx="7" fill="#0b0a1c" stroke="#2c2753"/>
+        <line x1="124" y1="70" x2="186" y2="70" stroke="#2c2753" stroke-width="2"/>
+        <rect class="anim bar" x="128" y="40" width="10" height="30" rx="2" fill="var(--c)"/>
+        <rect class="anim bar b2" x="143" y="30" width="10" height="40" rx="2" fill="#ffb547"/>
+        <rect class="anim bar b3" x="158" y="48" width="10" height="22" rx="2" fill="var(--c)"/>
+        <rect class="anim bar b4" x="173" y="26" width="10" height="44" rx="2" fill="#ffb547"/>
+        <g class="anim lens"><circle cx="134" cy="96" r="10" fill="none" stroke="#efeaff" stroke-width="3"/><line x1="141" y1="103" x2="150" y2="112" stroke="#efeaff" stroke-width="4" stroke-linecap="round"/></g>
+        <g class="hover">
+          <ellipse cx="70" cy="138" rx="22" ry="4" fill="var(--c)" opacity=".45"/>
+          <rect x="46" y="80" width="48" height="44" rx="19" fill="var(--c)"/>
+          <circle class="blinker" cx="70" cy="102" r="5" fill="#fff" opacity=".8"/>
+          <rect x="42" y="40" width="56" height="42" rx="17" fill="var(--steel)"/>
+          <rect x="49" y="50" width="42" height="19" rx="9.5" fill="var(--visor)"/>
+          <circle class="eye" cx="62" cy="60" r="4" fill="var(--c)"/><circle class="eye" cx="78" cy="60" r="4" fill="var(--c)"/>
+          <line x1="70" y1="40" x2="70" y2="29" stroke="var(--steel)" stroke-width="3"/><circle class="blinker" cx="70" cy="27" r="4" fill="var(--c)"/>
+          <rect x="90" y="88" width="24" height="8" rx="4" fill="var(--c)" transform="rotate(20 90 92)"/>
+        </g>
+      </svg>
+    </section>
+
+    <section class="room you" style="--c: var(--you)">
+      <div class="who"><h2>Du</h2><span>Freigabe</span></div>
+      <div class="state">entscheidest</div>
+      <p class="bubble"><b id="youWaiting">114</b> Videos warten auf dein OK – im Dashboard oder per SMS „OK 130“.</p>
+      <svg viewBox="0 0 200 150" role="img" aria-label="Handy mit Freigabe-Haken">
+        <rect x="70" y="14" width="60" height="112" rx="12" fill="#0b0a1c" stroke="var(--c)" stroke-width="3"/>
+        <rect x="80" y="30" width="40" height="70" rx="4" fill="#221e46"/>
+        <circle class="anim blinker" cx="100" cy="64" r="16" fill="none" stroke="#4fe3a1" stroke-width="4"/>
+        <path d="M92 64 l6 6 11 -12" fill="none" stroke="#4fe3a1" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        <rect x="90" y="110" width="20" height="5" rx="2.5" fill="var(--c)"/>
+      </svg>
+    </section>
+
+    <section class="feed">
+      <h3>Funkprotokoll</h3>
+      <ol id="feed"><li style="--c: var(--jarvis)"><b>Jarvis</b><span>Studio ist offen.</span></li></ol>
+    </section>
+  </div>
+
+  <p class="note" id="note">Hier wird die Arbeit mit echten Videos aus deinem Studio nachgespielt. Live mit den echten Daten siehst du dein Team auf deinem PC unter <code>http://localhost:8787/team</code>, wenn Jarvis läuft.</p>
+</div>
+
+<script>
+(() => {
+  const NAMES = { jarvis: "Jarvis", scout: "Scout", writer: "Designer", producer: "Animator", publisher: "Uploader", analyst: "Analyst" };
+  const rooms = {};
+  document.querySelectorAll(".room[data-w]").forEach((r) => { rooms[r.dataset.w] = r; });
+  const $ = (id) => document.getElementById(id);
+  const sleep = (ms) => new Promise((ok) => setTimeout(ok, ms));
+  const feedItems = [];
+
+  function say(w, text, on = true, toFeed = true) {
+    const r = rooms[w];
+    if (!r) return;
+    r.querySelector(".bubble").textContent = text;
+    r.querySelector(".state").textContent = on ? "arbeitet" : "wartet";
+    r.classList.toggle("on", !!on);
+    if (toFeed) feed(w, text);
+  }
+  function feed(w, text) {
+    feedItems.unshift({ w, text, t: Date.now() });
+    feedItems.length = Math.min(feedItems.length, 8);
+    renderFeed();
+  }
+  function ago(t) {
+    const s = Math.round((Date.now() - t) / 1000);
+    return s < 5 ? "jetzt" : s < 60 ? `vor ${s} s` : `vor ${Math.round(s / 60)} min`;
+  }
+  function renderFeed() {
+    const ol = $("feed");
+    ol.replaceChildren(...feedItems.map(({ w, text, t }) => {
+      const li = document.createElement("li");
+      li.style.setProperty("--c", `var(--${w})`);
+      const b = document.createElement("b"); b.textContent = NAMES[w] || w;
+      const span = document.createElement("span"); span.textContent = `${text} · ${ago(t)}`;
+      li.append(b, span);
+      return li;
+    }));
+  }
+  setInterval(renderFeed, 5000);
+  const idle = (...ws) => ws.forEach((w) => say(w, rooms[w].querySelector(".bubble").textContent, false, false));
+  function grade(score) {
+    $("gradeText").textContent = `${score}/10`;
+    const g = $("grade");
+    g.style.opacity = "1";
+    g.style.transform = "scale(1.15)";
+    setTimeout(() => { g.style.transform = "scale(1)"; }, 300);
+  }
+  async function render(no, seconds) {
+    $("renderNo").textContent = `#${no}`;
+    const steps = 30;
+    for (let i = 0; i <= steps; i++) {
+      const p = i / steps;
+      $("renderBar").setAttribute("width", (58 * p).toFixed(1));
+      $("renderPct").textContent = `${Math.round(p * 100)} % · 60 fps`;
+      await sleep((seconds * 1000) / steps);
+    }
+  }
+
+  // Echte Videos aus dem Studio (Stand 27.11.2026) – so sind sie entstanden
+  const VIDEOS = __VIDEOS__;
+
+  async function demo() {
+    for (;;) {
+      for (const v of VIDEOS) {
+        $("conceptName").textContent = v.label;
+        $("grade").style.opacity = "0";
+        say("jarvis", `Neue Runde: ${v.label}. Scout, was läuft gerade?`);
+        await sleep(2400);
+        idle("jarvis");
+        say("scout", `Suche Trends zu „${v.query}“ …`);
+        await sleep(3600);
+        say("scout", "Gefunden: Spannung ab Sekunde 1, Höhepunkt am Ende.", false);
+        say("writer", `Entwerfe: ${v.palette}, Musik ${v.music}, ${v.dur} s.`);
+        await sleep(3600);
+        say("writer", `Fertig: „${v.title}“`, false);
+        say("jarvis", "Ich prüfe das Konzept …");
+        await sleep(1800);
+        if (v.score < 7) {
+          grade(v.score);
+          say("jarvis", `Note ${v.score}/10 – die Frage in der Beschreibung muss stärker werden. Zurück an den Designer!`);
+          say("writer", "Ich bessere nach …");
+          await sleep(3200);
+          say("writer", "Überarbeitet!", false);
+          grade(Math.min(9, v.score + 2));
+          say("jarvis", `Jetzt ${Math.min(9, v.score + 2)}/10. Animator, los!`);
+        } else {
+          grade(v.score);
+          say("jarvis", `Note ${v.score}/10 – stark. Animator, los!`);
+        }
+        await sleep(1800);
+        idle("jarvis");
+        say("producer", `Rendere Video #${v.id} – ${v.dur} s, 1080×1920 …`);
+        await render(v.id, 6);
+        say("producer", `#${v.id} fertig: Länge, Bewegung und Ton geprüft.`, false);
+        say("publisher", `#${v.id} liegt bereit und wartet auf deine Freigabe.`);
+        await sleep(2600);
+        idle("publisher");
+        say("analyst", "Sobald Videos online sind, messe ich Aufrufe, Likes und Kommentare.");
+        await sleep(2600);
+        idle("analyst");
+        await sleep(1200);
+      }
+    }
+  }
+
+  async function live(url) {
+    $("mode").textContent = "Live";
+    $("note").textContent = "Live-Ansicht: aktualisiert sich alle 3 Sekunden mit den echten Daten von Jarvis.";
+    $("sub").textContent = "Dein Team bei der Arbeit – in Echtzeit.";
+    const last = {};
+    for (;;) {
+      try {
+        const res = await fetch(url, { credentials: "same-origin", cache: "no-store" });
+        const data = await res.json();
+        for (const [w, info] of Object.entries(data.workers || {})) {
+          const fresh = Date.now() / 1000 - (info.ts || 0) < 90;
+          const changed = last[w] !== info.text;
+          last[w] = info.text;
+          say(w, info.text || "wartet", fresh, changed && !!info.ts);
+        }
+        if (data.waiting != null) $("waiting").textContent = data.waiting;
+        if (data.waiting != null) { $("stackNo").textContent = data.waiting; $("youWaiting").textContent = data.waiting; }
+        if (data.render) {
+          $("renderNo").textContent = data.render.no;
+          $("renderBar").setAttribute("width", (58 * data.render.progress).toFixed(1));
+          $("renderPct").textContent = `${Math.round(data.render.progress * 100)} % · 60 fps`;
+        }
+      } catch (e) { /* nächster Versuch in 3 s */ }
+      await sleep(3000);
+    }
+  }
+
+  if (window.TEAM_LIVE) live(window.TEAM_LIVE); else demo();
+})();
+</script>

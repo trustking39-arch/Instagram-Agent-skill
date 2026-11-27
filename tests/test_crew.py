@@ -266,3 +266,18 @@ def test_batch_then_publish_only_tiktok(cfg, db):
     boss.publish_pending(only=["tiktok"])
     assert len(tt.uploaded) == 3 and yt.uploaded == []
     assert all(db.video(v)["platform_ids"].keys() == {"tiktok"} for v in created)
+
+
+def test_team_office_page_and_live_state(cfg, db, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from content_crew.webhooks import create_app
+
+    db.set_activity("producer", "animiert Video #7")
+    client = TestClient(create_app(cfg, db))
+    page = client.get("/team")
+    assert page.status_code == 200 and "Jarvis" in page.text and "TEAM_LIVE" in page.text
+    data = client.get("/dashboard/state.json").json()
+    assert data["workers"]["producer"]["text"] == "animiert Video #7" and data["waiting"] == 0
+    phone = {"cf-connecting-ip": "203.0.113.9"}
+    assert client.get("/dashboard/state.json", headers=phone).status_code == 403

@@ -137,6 +137,29 @@ def create_app(cfg: Config, db: DB):
         response.delete_cookie(COOKIE)
         return response
 
+    @app.get("/team", response_class=HTMLResponse)
+    def team(request: Request):
+        """Animiertes Team-Büro – live mit den echten Daten."""
+        if not allowed(request):
+            return RedirectResponse("/login", status_code=303)
+        from pathlib import Path
+
+        page = (Path(__file__).parent / "static" / "team.html").read_text(encoding="utf-8")
+        head, body = page.split('<div class="wrap">', 1)
+        body = '<div class="wrap">' + body.replace("__VIDEOS__", "[]")
+        return HTMLResponse(
+            '<!doctype html><html lang="de"><head><meta charset="utf-8">'
+            '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">'
+            f'{head}</head><body><script>window.TEAM_LIVE = "/dashboard/state.json";</script>{body}</body></html>')
+
+    @app.get("/dashboard/state.json")
+    def team_state(request: Request):
+        if not allowed(request):
+            raise HTTPException(status_code=403)
+        workers = {w: db.activity(w) for w in ("jarvis", "scout", "writer", "producer", "publisher", "analyst")}
+        waiting = db.conn.execute("SELECT COUNT(*) FROM videos WHERE status='awaiting_approval'").fetchone()[0]
+        return {"workers": workers, "waiting": waiting}
+
     @app.post("/dashboard/cmd")
     async def dashboard_cmd(request: Request):
         if not allowed(request):
