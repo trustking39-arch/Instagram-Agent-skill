@@ -201,7 +201,7 @@ class ShopManager:
         site = self.db.doc("website") or self.build_site()
         products = self.db.products(list(ACTIVE))
         stamp = datetime.now().strftime("Stand %d.%m.%Y %H:%M")
-        fragment = render_preview(site, list(reversed(products)), self.todos(), stamp)
+        fragment = render_preview(site, list(reversed(products)), self.todos(), stamp, self.s)
         (self.dir / "vorschau-fragment.html").write_text(fragment, encoding="utf-8")
         path = self.dir / "vorschau.html"
         path.write_text(wrap_page(fragment), encoding="utf-8")
