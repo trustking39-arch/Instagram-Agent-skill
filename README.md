@@ -128,6 +128,25 @@ Die Shop-Runde läuft in jeder Jarvis-Runde mit. Neue Produkte landen im Dashboa
 | `PREIS P3 2,40` | `content-crew shop preis P3 2,40` | echten Einkaufspreis eintragen, der Kalkulator rechnet neu |
 | | `content-crew shop` | eine Shop-Runde jetzt |
 | | `content-crew shop export` | Shopify-Importdatei schreiben |
+| | `content-crew shop fotos` | Produktfotos neu zusammenstellen (`fotos rendern`: fehlende Studiobilder mit Blender rechnen) |
+| | `content-crew shop paket` | Shop-Paket als ZIP: Importdatei, Fotos, Druckdateien, Wallpaper, Seiten, Mails, Anleitung |
+
+### Produktfotos aus dem 3D-Fotostudio
+
+Jeder Alltagshelfer ist in `content_crew/shop/studio3d.py` als 3D-Modell in echten Maßen nachgebaut und
+wird wie im Fotostudio ausgeleuchtet und mit Blender (Cycles) gerendert. Die Poster hängen gerahmt in einem
+Wohnzimmer, die Wallpaper laufen auf drei Handys. Die fertigen Fotos liegen in `shop-assets/bilder/` – von dort
+lädt Shopify sie beim Import der CSV-Datei. Neue Studiobilder brauchen die offizielle Blender-Version als
+Python-Modul (mit Rauschfilter):
+
+```bash
+uv venv /opt/blender-studio --python 3.13 && VIRTUAL_ENV=/opt/blender-studio uv pip install bpy
+content-crew shop fotos rendern      # einige Minuten pro Bild
+```
+
+Ohne Blender entstehen einfache Ersatzbilder. Wichtig: Die Studiobilder zeigen die Produkte so, wie sie
+beschrieben sind – wähle beim Lieferanten genau so ein Produkt oder ersetze die Bilder durch seine Fotos.
+Poster werden ohne Rahmen geliefert; das steht im Produkttext und unter den Bildern.
 
 ### So wird daraus ein echter Shop
 

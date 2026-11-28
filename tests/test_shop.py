@@ -266,3 +266,90 @@ def test_dashboard_shop_section_preview_and_state(cfg, db):
     team = client.get("/team").text
     assert "__SHOP__" not in team and "Shop-Verwalter" in team
     assert client.get("/shop", headers={"cf-connecting-ip": "1.2.3.4"}, follow_redirects=False).status_code == 303
+
+
+# --- Produktfotos, Name und Shop-Paket -------------------------------------------------------------
+
+
+def _jpeg(path, w=300, h=200):
+    import skia
+
+    s = skia.Surface(w, h)
+    s.getCanvas().clear(skia.Color(40, 120, 160))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(bytes(s.makeImageSnapshot().encodeToData(skia.kJPEG, 90)))
+    return path
+
+
+def test_every_illustrated_product_has_a_studio_scene():
+    from content_crew.shop import fotos
+    from content_crew.shop.art import ART
+
+    assert set(fotos.STUDIO_KEYS) == set(ART)
+    script = fotos.STUDIO_SCRIPT.read_text(encoding="utf-8")
+    for key in fotos.STUDIO_KEYS.values():
+        assert f'"{key}": {key},' in script
+    assert fotos.studio_key({"kind": "pod", "world": "iceage"}) == "poster_iceage"
+    assert fotos.studio_key({"kind": "digital", "name": "x"}) == "wallpaper"
+    assert fotos.studio_key({"name": "Unbekanntes Produkt"}) is None
+
+
+def test_studio_photo_becomes_square_shop_photo_and_fallback_without_studio(tmp_path):
+    import skia
+
+    from content_crew.shop import fotos
+
+    studio = tmp_path / "studio"
+    _jpeg(studio / "massageball.jpg")
+    out = tmp_path / "bilder"
+    assert fotos.product_photos({"id": 11, "name": "Massageball-Set"}, out, studio) == ["P11-1.jpg"]
+    img = skia.Image.open(str(out / "P11-1.jpg"))
+    assert (img.width(), img.height()) == (fotos.SIZE, fotos.SIZE)
+    uris = fotos.photo_data({"photos": ["P11-1.jpg", "fehlt.jpg"]}, width=120, photo_dir=out)
+    assert len(uris) == 1 and uris[0].startswith("data:image/jpeg;base64,")
+    # ohne Studiobild: Illustration als Ersatz
+    names = fotos.product_photos({"id": 3, "name": "Tierhaar-Entfernerrolle", "collection": "Haustiere"}, out, studio)
+    assert names == ["P03-1.jpg"] and (out / "P03-1.jpg").exists()
+
+
+def test_preview_shows_photos_gallery_and_new_name(cfg, db, tmp_path, monkeypatch):
+    from content_crew.shop import fotos
+
+    monkeypatch.setattr(fotos, "PHOTO_DIR", tmp_path / "bilder")
+    m = ShopManager(cfg, db, shopify=False)
+    p = m.run_cycle()["neu"][0]
+    _jpeg(tmp_path / "bilder" / "A-1.jpg")
+    _jpeg(tmp_path / "bilder" / "A-2.jpg")
+    db.update_product(p["id"], data={**{k: v for k, v in db.product(p["id"]).items()
+                                         if k not in ("id", "status", "created_at", "updated_at")},
+                                      "photos": ["A-1.jpg", "A-2.jpg"]})
+    cfg["shop"]["name"] = "Weltenfund"
+    cfg["shop"]["slogan"] = "Fundstücke aus allen Welten"
+    m = ShopManager(cfg, db, shopify=False)
+    html = m.write_preview().read_text(encoding="utf-8")
+    assert f'class="art photo ph-{p["id"]}-0"' in html and f".ph-{p['id']}-1{{background-image:url(data:image/jpeg" in html
+    assert f'"gallery": ["ph-{p["id"]}-0", "ph-{p["id"]}-1"]' in html
+    assert "<b>Weltenfund</b>" in html and "Fundstücke aus allen Welten" in html and "Test Shop" not in html
+    assert db.doc("website")["shop_name"] == "Weltenfund"
+
+
+def test_shop_package_with_readme_csv_pages_and_mails(cfg, db):
+    import zipfile
+
+    from content_crew.shop.paket import build_package
+
+    cfg["shop"]["name"] = "Weltenfund"
+    m = ShopManager(cfg, db, shopify=False)
+    ids = [p["id"] for p in m.run_cycle()["neu"]]
+    for pid in ids[:3]:
+        m.approve(pid)
+    zpath = build_package(m, "Domain: weltenfund.com")
+    assert zpath.name == "Weltenfund-Shop-Paket.zip"
+    names = zipfile.ZipFile(zpath).namelist()
+    for part in ("LIES-MICH.txt", "1_shopify-import.csv", "5_seiten/ueber-uns.html", "6_emails/willkommen.txt"):
+        assert f"Weltenfund-Shop-Paket/{part}" in names
+    readme = zipfile.ZipFile(zpath).read("Weltenfund-Shop-Paket/LIES-MICH.txt").decode()
+    assert "Shopname „Weltenfund“" in readme and "Die 3 Produkte" in readme and "weltenfund.com" in readme
+    rows = list(csv.DictReader(zipfile.ZipFile(zpath).read("Weltenfund-Shop-Paket/1_shopify-import.csv")
+                               .decode().splitlines()))
+    assert {r["Vendor"] for r in rows} == {"Weltenfund"}

@@ -274,6 +274,20 @@ def cmd_shop(args) -> None:
             offer = p["calc"]["offer"]
             print(f"  P{p['id']:<4} {p['name'][:50]:50} {eur(offer['price']):>9}  Gewinn {eur(p['calc']['profit'])}")
         print(f"{len(added)} Kunst-Produkte angelegt. Druckdateien: {manager.dir / 'kunst'}")
+    elif action == "fotos":
+        done = manager.refresh_photos(render="rendern" in values)
+        for pid, names in sorted(done.items()):
+            print(f"  P{pid:<4} {', '.join(names)}")
+        manager.write_preview()
+        print(f"Fotos für {len(done)} Produkte aktualisiert – Vorschau: {manager.dir / 'vorschau.html'}")
+    elif action == "paket":
+        from content_crew.shop.paket import build_package
+
+        manager.sync()
+        domain = str(manager.scfg.get("domain") or "")
+        hint = (f"Wunsch-Domain: {domain} – vor dem Kauf die Verfügbarkeit prüfen und zügig sichern." if domain
+                else "")
+        print(f"Shop-Paket: {build_package(manager, hint)}")
 
 
 def cmd_status(args) -> None:
@@ -364,7 +378,8 @@ def main(argv: list[str] | None = None) -> None:
     p = sub.add_parser("shop", help="Shop-Abteilung: runde | status | ok P1 | nein P1 | preis P1 2,40 | export | "
                                     "vorschau | kunst")
     p.add_argument("aktion", nargs="?", default="runde",
-                   choices=["runde", "status", "ok", "nein", "preis", "export", "vorschau", "kunst"])
+                   choices=["runde", "status", "ok", "nein", "preis", "export", "vorschau", "kunst", "fotos",
+                            "paket"])
     p.add_argument("werte", nargs="*", help="Produktnummern (P1 P2 …) bzw. Nummer und Einkaufspreis")
     p.set_defaults(func=cmd_shop)
     p = sub.add_parser("publish-pending", help="alle wartenden Videos hochladen")

@@ -45,6 +45,10 @@ class ShopManager:
         return str(self.scfg.get("name") or "Mein Shop")
 
     @property
+    def slogan(self) -> str:
+        return str(self.scfg.get("slogan") or "")
+
+    @property
     def email(self) -> str:
         return str((self.scfg.get("owner") or {}).get("email", ""))
 
@@ -115,6 +119,27 @@ class ShopManager:
             self.build_site()
             self.write_preview()
         return added
+
+    def refresh_photos(self, render: bool = False, samples: int = 96) -> dict[int, list[str]]:
+        """Produktfotos für alle aktiven Produkte nach shop-assets/bilder schreiben.
+
+        render=True rechnet fehlende Studiobilder zuerst mit Blender (einige Minuten je Bild).
+        """
+        from content_crew.shop import fotos
+
+        studio = self.dir / "studio"
+        products = self.db.products(list(ACTIVE))
+        if render:
+            keys = sorted({k for p in products if (k := fotos.studio_key(p)) and not (studio / f"{k}.jpg").exists()})
+            self.act("webdesigner", f"fotografiert {len(keys)} Produkte im 3D-Studio")
+            fotos.render_studio(keys, studio, self.dir / "kunst", samples=samples)
+        done: dict[int, list[str]] = {}
+        for p in products:
+            names = fotos.product_photos(p, fotos.PHOTO_DIR, studio)
+            self.db.update_product(p["id"], data=_clean(p) | {"photos": names})
+            done[p["id"]] = names
+        self.act("webdesigner", f"Produktfotos für {len(done)} Produkte aktualisiert")
+        return done
 
     def known_names(self) -> set[str]:
         return {p["name"] for p in self.db.products(limit=2000)}
@@ -204,7 +229,7 @@ class ShopManager:
     def build_site(self) -> dict:
         products = self.db.products(list(ACTIVE))
         self.act("webdesigner", "baut Startseite, Kategorien, Menü und Infoseiten")
-        site = build_site(self.name, self.s, products, self.email)
+        site = build_site(self.name, self.s, products, self.email, self.slogan)
         self.db.set_doc("website", site)
         self.act("webdesigner", f"Shop-Aufbau fertig: {len(site['collections'])} Kategorien, "
                                 f"{len(site['pages'])} Infoseiten")
@@ -223,8 +248,15 @@ class ShopManager:
         missing = sum(1 for p in approved if not gpsr_complete(p))
         return legal_todos(self.scfg, self.shopify is not None, missing, len(approved))
 
+    def site(self) -> dict:
+        """Gespeicherter Shop-Aufbau – neu gebaut, wenn sich Name oder Slogan geändert haben."""
+        site = self.db.doc("website")
+        if not site or site.get("shop_name") != self.name or site.get("slogan", "") != self.slogan:
+            site = self.build_site()
+        return site
+
     def write_preview(self) -> Path:
-        site = self.db.doc("website") or self.build_site()
+        site = self.site()
         products = self.db.products(list(ACTIVE))
         stamp = datetime.now().strftime("Stand %d.%m.%Y %H:%M")
         fragment = render_preview(site, list(reversed(products)), self.todos(), stamp, self.s)
@@ -263,7 +295,7 @@ class ShopManager:
         return done
 
     def sync_site(self) -> None:
-        site = self.db.doc("website") or self.build_site()
+        site = self.site()
         ids = self.db.doc("shopify_ids", {"pages": {}, "collections": {}})
         for page in site["pages"]:
             ids["pages"][page["handle"]] = self.shopify.upsert_page(page, ids["pages"].get(page["handle"], ""))

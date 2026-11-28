@@ -46,6 +46,8 @@ DEFAULTS: dict[str, Any] = {
     "shop": {
         "enabled": True,
         "name": "",                 # Name des Shops (leer = "Mein Shop")
+        "slogan": "",               # kurzer Satz unter dem Namen, z. B. "Fundstücke aus allen Welten"
+        "domain": "",               # Wunsch-Domain für den Shop (nur als Hinweis in der Anleitung)
         "origin": "eu_lager",       # eu_lager | china_direkt | eigenlager
         "vat": 20,                  # Umsatzsteuer in % (Österreich)
         "pay_pct": 2.5,             # Zahlungsgebühr in %

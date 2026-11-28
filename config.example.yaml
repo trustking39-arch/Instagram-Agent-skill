@@ -38,6 +38,8 @@ video:
 shop:                                          # Shop-Abteilung: 14 KI-Arbeiter bauen deinen Online-Shop
   enabled: true
   name: ""                                     # Name deines Shops
+  slogan: ""                                   # kurzer Satz unter dem Namen (Fußzeile, Über uns)
+  domain: ""                                   # Wunsch-Domain (Hinweis in der Anleitung des Shop-Pakets)
   origin: eu_lager                             # eu_lager | china_direkt | eigenlager
   min_profit: 4.0                              # Mindestgewinn pro Bestellung (€) nach allen Kosten
   ads: 4.0                                     # angenommene Werbekosten pro Bestellung (€)

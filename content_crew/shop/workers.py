@@ -223,11 +223,13 @@ def ad_plan(p: dict, calc: dict) -> dict:
 def email_drafts(shop_name: str, products: list[dict], s: Settings) -> dict:
     top = [p for p in products if p.get("texts")][:3]
     picks = "\n".join(f"– {p['texts']['title']}: {eur(p['calc']['offer']['price'])}" for p in top) or "– …"
+    art = " – und Poster und Wallpaper aus unserer TikTok-Serie" if any(
+        p.get("kind") in ("pod", "digital") for p in products) else ""
     return {
         "willkommen": {
             "betreff": f"Willkommen bei {shop_name}!",
             "text": (f"Hallo!\n\nSchön, dass du dabei bist. Bei {shop_name} findest du kleine Helfer, die den Alltag "
-                     f"leichter machen. {shipping_sentence(s)}\n\nGerade beliebt:\n{picks}\n\nBis bald!"),
+                     f"leichter machen{art}. {shipping_sentence(s)}\n\nGerade beliebt:\n{picks}\n\nBis bald!"),
         },
         "neu_im_shop": {
             "betreff": "Neu im Shop: Helfer für den Winter",

@@ -12,7 +12,7 @@ from content_crew.shop.workers import faq, season_now, shipping_sentence, slugif
 LIVE = ("wartet", "freigegeben", "online")
 
 
-def build_site(shop_name: str, s: Settings, products: list[dict], email: str = "") -> dict:
+def build_site(shop_name: str, s: Settings, products: list[dict], email: str = "", slogan: str = "") -> dict:
     live = [p for p in products if p["status"] in LIVE]
     seen: list[str] = []
     for p in live:
@@ -28,7 +28,10 @@ def build_site(shop_name: str, s: Settings, products: list[dict], email: str = "
             f"<p>{esc(shop_name)} ist ein kleiner Online-Shop aus Österreich. Wir suchen Alltagshelfer, die ein "
             "echtes Problem lösen: im Auto, zu Hause, auf Reisen, beim Sport und mit Haustieren.</p>"
             "<p>Viele unserer Produkte zeigen wir in kurzen Videos auf TikTok. So siehst du vor dem Kauf, wie sie "
-            "funktionieren.</p>")},
+            "funktionieren.</p>"
+            "<p>Unsere Poster und Wallpaper stammen aus unserer TikTok-Serie „24 Hours In …“: Ein Abenteurer reist "
+            "durch ein Portal in fremde Welten – von der Eiszeit bis in den Wilden Westen. Was er dort findet, gibt "
+            "es bei uns als Kunstdruck.</p>")},
         {"handle": "versand", "title": "Versand & Lieferung", "body_html": (
             f"<p>{esc(shipping_sentence(s))} Die Lieferzeit beträgt {days} Werktage nach Zahlungseingang.</p>"
             "<p>Sobald dein Paket unterwegs ist, bekommst du eine E-Mail mit der Sendungsverfolgung.</p>")},
@@ -41,6 +44,7 @@ def build_site(shop_name: str, s: Settings, products: list[dict], email: str = "
     ]
     return {
         "shop_name": shop_name,
+        "slogan": slogan,
         "hero": {
             "title": "Gut durch den Winter" if winter else "Clevere Helfer für jeden Tag",
             "text": f"Für Auto, Zuhause, Reise und Haustier. Lieferung in {days} Werktagen.",
@@ -172,7 +176,7 @@ h2 { font: 700 clamp(24px, 4vw, 32px)/1.1 var(--font-display); letter-spacing: -
 .head p { margin: 4px 0 0; color: var(--muted); }
 .cats { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr)); }
 .cat { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; text-align: left; padding: 0; color: var(--ink); }
-.cat .img { aspect-ratio: 4 / 3; max-width: 100%; }
+.cat .img { aspect-ratio: 1 / 1; max-width: 100%; }
 .cat b { display: block; padding: 10px 12px 2px; font-size: 15px; }
 .cat span { display: block; padding: 0 12px 12px; color: var(--muted); font-size: 13px; }
 .tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
@@ -183,7 +187,13 @@ select { font: inherit; font-weight: 700; font-size: 14px; border: 1px solid var
 @media (min-width: 760px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (min-width: 1040px) { .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; display: grid; grid-template-rows: auto 1fr; min-width: 0; }
-.card .img { position: relative; display: block; width: 100%; aspect-ratio: 4 / 3; max-width: 100%; border: 0; padding: 0; background: none; cursor: pointer; }
+.card .img { position: relative; display: block; width: 100%; aspect-ratio: 1 / 1; max-width: 100%; border: 0; padding: 0; background: none; cursor: pointer; }
+.art.photo { position: absolute; inset: 0; background-color: #ece9e3; background-size: cover; background-position: center; }
+.fill { position: absolute; inset: 0; }
+.gallery { position: absolute; left: 12px; bottom: 12px; z-index: 2; display: flex; gap: 8px; flex-wrap: wrap; }
+.gallery button { position: relative; width: 54px; height: 54px; padding: 0; border-radius: 10px; overflow: hidden; border: 2px solid #ffffff; background: none; box-shadow: 0 2px 8px rgba(10, 14, 24, .25); }
+.gallery button[aria-pressed="true"] { border-color: var(--gold); }
+.note { font-size: 12.5px; color: var(--muted); margin: 0; }
 .badges { position: absolute; left: 10px; top: 10px; display: flex; gap: 6px; flex-wrap: wrap; }
 .badge { font: 800 11.5px/1 var(--font-body); padding: 6px 9px; border-radius: 999px; background: var(--gold); color: var(--on-gold); }
 .badge.cold { background: var(--navy); color: var(--on-navy); }
@@ -263,8 +273,9 @@ dialog::backdrop { background: rgba(10, 14, 24, .5); }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 """
 
-CROWN = ('<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M3 8.5l4.2 3.3L12 5l4.8 6.8L21 8.5'
-         'l-1.8 9.5H4.8z"/><rect x="4.8" y="19" width="14.4" height="2" rx="1"/></svg>')
+LOGO = ('<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" '
+        'stroke-width="2.4"/><path d="M12 6.4l1.5 4.1 4.1 1.5-4.1 1.5-1.5 4.1-1.5-4.1-4.1-1.5 4.1-1.5z" '
+        'fill="currentColor"/></svg>')
 ICON = {
     "bag": '<path d="M6 8h12l-1 12H7z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/>',
     "search": '<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/>',
@@ -316,12 +327,23 @@ def render_preview(site: dict, products: list[dict], todos: list[dict] | None = 
                    s: Settings | None = None) -> str:
     """Shop-Vorschau als eigenständige Seite (ohne <html>-Gerüst; für Dashboard und Artifact)."""
     from content_crew.shop.art import product_art
+    from content_crew.shop.fotos import photo_data
 
     esc = html.escape
     s = s or Settings()
     shown = [p for p in products if p["status"] in LIVE and p.get("texts")]
     winter_first = sorted(shown, key=lambda p: p.get("season") != "winter")
-    arts = {p["id"]: product_art(p) for p in shown}
+    photos = {p["id"]: photo_data(p) for p in shown}
+    # Jedes Foto steht nur einmal in der Seite (als CSS-Klasse) und wird in Karte, Kategorie und Dialog wiederverwendet
+    photo_css = "".join(f".ph-{pid}-{k}{{background-image:url({uri})}}"
+                        for pid, uris in photos.items() for k, uri in enumerate(uris))
+
+    def art_for(p: dict) -> str:
+        if photos.get(p["id"]):
+            return f'<div class="art photo ph-{p["id"]}-0" role="img" aria-label="{esc(p["texts"]["title"])}"></div>'
+        return product_art(p)
+
+    arts = {p["id"]: art_for(p) for p in shown}
     waiting = sum(1 for p in shown if p["status"] == "wartet")
     days = ORIGINS[s.origin]["days"]
     name = site["shop_name"]
@@ -360,7 +382,10 @@ def render_preview(site: dict, products: list[dict], todos: list[dict] | None = 
     data = [{"id": p["id"], "title": p["texts"]["title"], "price": p["calc"]["offer"]["price"],
              "label": p["calc"]["offer"]["label"], "n": p["calc"]["offer"]["n"], "collection": p["collection"],
              "short": p["texts"]["short"], "html": p["texts"]["html"], "benefits": p.get("benefits", []),
-             "days": p.get("delivery_days", days)} for p in shown]
+             "days": p.get("delivery_days", days),
+             "gallery": [f"ph-{p['id']}-{k}" for k in range(len(photos.get(p["id"], [])))],
+             "note": ("Abbildung mit Rahmen und Deko – geliefert wird das Poster ohne Rahmen."
+                      if p.get("kind") == "pod" else "")} for p in shown]
     origin_text = {"eu_lager": "aus Lagern in der EU", "china_direkt": "direkt vom Lieferanten",
                    "eigenlager": "aus unserem Lager in Österreich"}[s.origin]
     script = """
@@ -371,8 +396,8 @@ def render_preview(site: dict, products: list[dict], todos: list[dict] | None = 
   const $ = (q) => document.querySelector(q);
   const eur = (v) => v.toLocaleString('de-AT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
   let cart = {};
-  try { cart = JSON.parse(localStorage.getItem('kt-cart') || '{}') || {}; } catch (e) { cart = {}; }
-  const save = () => { try { localStorage.setItem('kt-cart', JSON.stringify(cart)); } catch (e) {} };
+  try { cart = JSON.parse(localStorage.getItem('shop-cart') || '{}') || {}; } catch (e) { cart = {}; }
+  const save = () => { try { localStorage.setItem('shop-cart', JSON.stringify(cart)); } catch (e) {} };
   let toastTimer;
   function toast(text) {
     const t = $('#toast'); t.textContent = text; t.hidden = false;
@@ -423,6 +448,21 @@ def render_preview(site: dict, products: list[dict], todos: list[dict] | None = 
   function openProduct(id) {
     const p = byId[id]; current = id; qty = 1;
     $('#pdImg').innerHTML = art(id);
+    const gal = $('#pdGallery'); gal.replaceChildren();
+    if (p.gallery.length > 1) {
+      p.gallery.forEach((cls, i) => {
+        const b = document.createElement('button');
+        b.type = 'button'; b.setAttribute('aria-label', `Bild ${i + 1} von ${p.gallery.length}`);
+        b.setAttribute('aria-pressed', String(i === 0));
+        b.innerHTML = `<div class="art photo ${cls}"></div>`;
+        b.onclick = () => {
+          const main = $('#pdImg .art'); if (main) main.className = `art photo ${cls}`;
+          gal.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+        };
+        gal.append(b);
+      });
+    }
+    $('#pdNote').textContent = p.note;
     $('#pdKicker').textContent = p.collection;
     $('#pdTitle').textContent = p.title;
     $('#pdPrice').textContent = eur(p.price);
@@ -474,13 +514,13 @@ def render_preview(site: dict, products: list[dict], todos: list[dict] | None = 
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=Manrope:wght@400;600;700;800&display=swap">
-<style>{PREVIEW_CSS}</style>
+<style>{PREVIEW_CSS}{photo_css}</style>
 <div class="wrap">
 <div class="owner gut"><div class="inner"><span><b>Vorschau für dich</b> · noch nicht online{" · " + esc(stamp) if stamp else ""} · {waiting} Produkte warten auf deine Freigabe</span>
 <label><input type="checkbox" id="showNotes"> Jarvis-Notizen</label></div></div>
 <div class="announce gut"><div class="inner"><span>{esc(ship_line)}</span><span>Lieferung in {esc(days)} Werktagen</span><span>14 Tage Widerrufsrecht</span></div></div>
 <header class="site gut"><div class="inner">
-  <a class="logo" href="#top" aria-label="{esc(name)} Startseite">{CROWN}<b>{esc(brand)}</b><span>{esc(rest)}</span></a>
+  <a class="logo" href="#top" aria-label="{esc(name)} Startseite">{LOGO}<b>{esc(brand)}</b><span>{esc(rest)}</span></a>
   <nav class="main" aria-label="Kategorien"><ul>{nav}</ul></nav>
   <div class="icons"><button class="icon-btn" id="searchBtn" aria-label="Produkte durchsuchen">{_svg("search")}</button>
   <button class="icon-btn" id="cartBtn" aria-label="Warenkorb öffnen">{_svg("bag")}<span class="count" id="count" hidden>0</span></button></div>
@@ -521,8 +561,8 @@ def render_preview(site: dict, products: list[dict], todos: list[dict] | None = 
   </div></section>
 </main>
 <footer class="site gut"><div class="inner">
-  <div><a class="logo" href="#top">{CROWN}<b>{esc(brand)}</b><span>{esc(rest)}</span></a>
-  <p>Clevere Alltagshelfer aus Österreich – gezeigt auf TikTok, geliefert zu dir.</p></div>
+  <div><a class="logo" href="#top">{LOGO}<b>{esc(brand)}</b><span>{esc(rest)}</span></a>
+  <p>{esc(site.get("slogan") or "Clevere Alltagshelfer aus Österreich")} – Kunst aus unserer TikTok-Serie und kleine Helfer für jeden Tag, geliefert zu dir.</p></div>
   <div><h4>Shop</h4><ul>{"".join(f"<li>{esc(c['title'])}</li>" for c in site["collections"] if c["title"] in first)}</ul></div>
   <div><h4>Hilfe</h4><ul><li>Versand &amp; Lieferung</li><li>Rückgabe &amp; Widerruf</li><li>Häufige Fragen</li><li>Kontakt</li></ul></div>
   <div><h4>Rechtliches</h4><ul>{"".join(f"<li>{esc(f)}</li>" for f in site["footer"] if f != "Versand & Lieferung")}</ul></div>
@@ -538,10 +578,10 @@ def render_preview(site: dict, products: list[dict], todos: list[dict] | None = 
     <button class="btn gold" id="checkout">Zur Kasse</button></div>
 </div></div>
 <dialog id="pd" aria-labelledby="pdTitle"><div style="position:relative"><button class="icon-btn close" id="pdClose" aria-label="Schließen">{_svg("x")}</button>
-  <div class="pd"><div class="img" id="pdImg"></div><div class="txt">
+  <div class="pd"><div class="img"><div class="fill" id="pdImg"></div><div class="gallery" id="pdGallery"></div></div><div class="txt">
     <span class="kicker" id="pdKicker"></span><h2 id="pdTitle"></h2>
     <div class="price"><b id="pdPrice"></b><small>inkl. USt., zzgl. Versand</small></div><small class="hint" id="pdPer"></small>
-    <p class="hint" id="pdShort"></p><ul id="pdBenefits"></ul>
+    <p class="note" id="pdNote"></p><p class="hint" id="pdShort"></p><ul id="pdBenefits"></ul>
     <div class="tools"><div class="qty"><button id="pdMinus" aria-label="weniger">−</button><span id="pdQty">1</span><button id="pdPlus" aria-label="mehr">+</button></div>
     <button class="btn navy" id="pdAdd">In den Warenkorb</button></div>
     <details><summary>Beschreibung</summary><div id="pdDesc"></div></details>
