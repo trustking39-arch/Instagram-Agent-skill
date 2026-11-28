@@ -130,7 +130,7 @@ class ShopManager:
         studio = self.dir / "studio"
         products = self.db.products(list(ACTIVE))
         if render:
-            keys = sorted({k for p in products if (k := fotos.studio_key(p)) and not (studio / f"{k}.jpg").exists()})
+            keys = sorted({k for p in products for k in fotos.studio_scenes(p) if not (studio / f"{k}.jpg").exists()})
             self.act("webdesigner", f"fotografiert {len(keys)} Produkte im 3D-Studio")
             fotos.render_studio(keys, studio, self.dir / "kunst", samples=samples)
         done: dict[int, list[str]] = {}

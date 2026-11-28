@@ -45,6 +45,10 @@ STUDIO_KEYS = {
 }
 
 
+# Zusätzliche Szenen je Produkt – das Anwendungsfoto steht vorne und wird zum Hauptbild
+EXTRA_SCENES = {"frostschutz": ["frostschutz_auto"]}
+
+
 def studio_key(p: dict) -> str | None:
     """Welche Studio-Szene zu einem Produkt gehört (None = kein 3D-Modell vorhanden)."""
     if p.get("kind") == "pod" and p.get("world"):
@@ -52,6 +56,12 @@ def studio_key(p: dict) -> str | None:
     if p.get("kind") == "digital":
         return "wallpaper"
     return STUDIO_KEYS.get(p.get("name", ""))
+
+
+def studio_scenes(p: dict) -> list[str]:
+    """Alle Studio-Szenen eines Produkts in der Reihenfolge der Shopfotos."""
+    key = studio_key(p)
+    return [*EXTRA_SCENES.get(key, []), key] if key else []
 
 
 def blender_command() -> list[str] | None:
@@ -194,16 +204,17 @@ def illustration_photo(p: dict, out: Path) -> list[str]:
 
 
 def studio_photos(p: dict, out: Path, studio_dir: Path) -> list[str]:
-    """Studiobild als Hauptfoto, dazu bei Postern das Motiv allein und beim Wallpaper-Paket alle Motive."""
-    key = studio_key(p)
-    src = studio_dir / f"{key}.jpg" if key else None
-    if src is None or not src.exists():
+    """Studiobilder als Shopfotos, dazu bei Postern das Motiv allein und beim Wallpaper-Paket alle Motive."""
+    sources = [studio_dir / f"{k}.jpg" for k in studio_scenes(p)]
+    sources = [s for s in sources if s.exists()]
+    if not sources:
         return []
-    names = [_copy_square(src, out / f"P{p['id']:02d}-1.jpg")]
+    names = [_copy_square(src, out / f"P{p['id']:02d}-{i}.jpg") for i, src in enumerate(sources, start=1)]
+    nxt = out / f"P{p['id']:02d}-{len(names) + 1}.jpg"
     if p.get("kind") == "pod" and p.get("file") and Path(p["file"]).exists():
-        names.append(flat_art(p, out / f"P{p['id']:02d}-2.jpg"))
+        names.append(flat_art(p, nxt))
     if p.get("kind") == "digital" and p.get("files"):
-        names.append(wallpaper_strip(p, out / f"P{p['id']:02d}-2.jpg"))
+        names.append(wallpaper_strip(p, nxt))
     return names
 
 

@@ -287,8 +287,10 @@ def test_every_illustrated_product_has_a_studio_scene():
 
     assert set(fotos.STUDIO_KEYS) == set(ART)
     script = fotos.STUDIO_SCRIPT.read_text(encoding="utf-8")
-    for key in fotos.STUDIO_KEYS.values():
+    for key in [*fotos.STUDIO_KEYS.values(), *(k for ks in fotos.EXTRA_SCENES.values() for k in ks)]:
         assert f'"{key}": {key},' in script
+    assert fotos.studio_scenes({"name": "Frostschutz-Abdeckung für die Windschutzscheibe"}) == [
+        "frostschutz_auto", "frostschutz"]
     assert fotos.studio_key({"kind": "pod", "world": "iceage"}) == "poster_iceage"
     assert fotos.studio_key({"kind": "digital", "name": "x"}) == "wallpaper"
     assert fotos.studio_key({"name": "Unbekanntes Produkt"}) is None

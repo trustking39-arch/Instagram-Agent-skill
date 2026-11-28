@@ -89,6 +89,26 @@ def world(color=(0.93, 0.93, 0.95), strength: float = 0.35) -> None:
     bg.inputs[1].default_value = strength
 
 
+def world_gradient(horizon, zenith, strength: float = 1.0) -> None:
+    """Himmel mit hellem Horizont und blauem Zenit – gibt Lack und Glas glaubhafte Spiegelungen."""
+    w = bpy.data.worlds[0] if bpy.data.worlds else bpy.data.worlds.new("Welt")
+    bpy.context.scene.world = w
+    w.use_nodes = True
+    nt = w.node_tree
+    bg = nt.nodes["Background"]
+    tc = nt.nodes.new("ShaderNodeTexCoord")
+    sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+    ramp = nt.nodes.new("ShaderNodeValToRGB")
+    ramp.color_ramp.elements[0].position = 0.0
+    ramp.color_ramp.elements[0].color = (*horizon, 1)
+    ramp.color_ramp.elements[1].position = 0.6
+    ramp.color_ramp.elements[1].color = (*zenith, 1)
+    nt.links.new(tc.outputs["Generated"], sep.inputs[0])
+    nt.links.new(sep.outputs["Z"], ramp.inputs["Fac"])
+    nt.links.new(ramp.outputs["Color"], bg.inputs[0])
+    bg.inputs[1].default_value = strength
+
+
 def look_at(ob, target) -> None:
     d = Vector(target) - ob.location
     ob.rotation_euler = d.to_track_quat("-Z", "Y").to_euler()
@@ -917,7 +937,7 @@ def laptop(art: Path) -> dict:
     n = Vector((0, -math.sin(beta), math.cos(beta)))
     mid = Vector((0, -0.04, 0.1265)) + n * (th / 2 + 0.002 + 0.0075)
     group("Laptop", parts + [hinge], mid, (beta, 0, 0))
-    return {"target": (0.0, -0.01, 0.17), "S": 0.48, "cam": (-0.44, -0.66, 0.3), "lens": 58, "fstop": 11}
+    return {"target": (0.0, 0.0, 0.2), "S": 0.53, "cam": (-0.44, -0.66, 0.3), "lens": 58, "fstop": 11}
 
 
 def frostschutz(art: Path) -> dict:
@@ -941,8 +961,97 @@ def frostschutz(art: Path) -> dict:
     for sx, sy in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
         box(f"Magnet{sx}{sy}", (0.05, 0.03, 0.004), black, (sx * 0.62, sy * 0.43, 0.012), bevel=0.0015)
     box("Tasche", (0.3, 0.22, 0.035), black, (0.62, -0.72, 0.0175), (0, 0, math.radians(-12)), bevel=0.012)
-    return {"target": (0.1, -0.05, 0.0), "S": 2.0, "cam": (-0.38, -1.62, 1.08), "lens": 36, "fstop": 14,
+    return {"target": (0.1, -0.08, 0.0), "S": 2.45, "cam": (-0.36, -1.6, 1.1), "lens": 36, "fstop": 14,
             "bg": (0.55, 0.6, 0.66)}
+
+
+def frostschutz_auto(art: Path) -> dict:
+    """Die Abdeckung auf der Windschutzscheibe eines Autos an einem frostigen Morgen."""
+    paint = mat("Lack", (0.3, 0.01, 0.02), 0.2, 0.4, coat=1.0, coat_rough=0.03)
+    glass = mat("Scheibe", (0.012, 0.014, 0.018), 0.03, spec=0.8)
+    BW = 0.9
+    # Stationen entlang des Autos: (y, Höhe, halbe Breite oben, Wölbung)
+    st = [(-2.05, 0.68, 0.8, 0.03), (-1.97, 0.8, 0.84, 0.04), (-1.6, 0.88, 0.87, 0.05), (-1.15, 0.93, 0.88, 0.05),
+          (-0.86, 0.955, 0.88, 0.05), (-0.62, 1.08, 0.83, 0.045), (-0.36, 1.22, 0.77, 0.04), (-0.1, 1.35, 0.72, 0.035),
+          (0.06, 1.43, 0.69, 0.03), (0.3, 1.47, 0.68, 0.03), (1.4, 1.48, 0.68, 0.03)]
+    nv = 24
+    bm = bmesh.new()
+    rows = []
+    for y, z, hw, crown in st:
+        cabin = y > -0.87
+        side = 0.98 if cabin else z - 0.1
+        pts = [(-BW, 0.4), (-BW, side), (-hw * 1.02, z - crown - 0.02)]
+        pts += [((-1 + 2 * i / nv) * hw, z - crown * (-1 + 2 * i / nv) ** 2) for i in range(nv + 1)]
+        pts += [(hw * 1.02, z - crown - 0.02), (BW, side), (BW, 0.4)]
+        rows.append([bm.verts.new((x, y, zz)) for x, zz in pts])
+    n = len(rows[0])
+    for k in range(len(rows) - 1):
+        y0, y1 = st[k][0], st[k + 1][0]
+        wind = -0.87 < (y0 + y1) / 2 < 0.07
+        cabin = (y0 + y1) / 2 > -0.87
+        for j in range(n - 1):
+            f = bm.faces.new((rows[k][j], rows[k][j + 1], rows[k + 1][j + 1], rows[k + 1][j]))
+            v = -1 + 2 * ((j + 0.5) - 3) / nv
+            top = 3 <= j < 3 + nv
+            f.material_index = 1 if ((top and wind and abs(v) < 0.86) or (cabin and j in (1, n - 3))) else 0
+    bm.faces.new(rows[0][::-1])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    car = mesh_object("Auto", bm, paint)
+    car.data.materials.append(glass)
+    subdivide(car, 2)
+    _finish(car)
+
+    def at(y: float, v: float, lift: float):
+        for (ya, za, ha, ca), (yb, zb, hb, cb) in pairwise(st):
+            if ya <= y <= yb:
+                t = (y - ya) / (yb - ya)
+                z, hw, crown = za + (zb - za) * t, ha + (hb - ha) * t, ca + (cb - ca) * t
+                return Vector((v * hw, y, z - crown * v * v + lift))
+        raise ValueError(y)
+
+    silver = mat("Silber", (0.78, 0.8, 0.83), 0.3, 0.9)
+    ntt, _ = _nodes(silver)
+    qv = _coords(ntt, "Object", (1, 1, 1), (0, 0, math.radians(45)))
+    bump(silver, math_node(ntt, "MULTIPLY", wave(ntt, qv, 24, "X").outputs["Fac"], wave(ntt, qv, 24, "Y").outputs["Fac"]),
+         0.5, 0.003)
+    black = fabric("Kante", (0.025, 0.025, 0.03), weave=1200, strength=0.3)
+    for name_, m_, vmax, y0, y1, lift in (("Rand", black, 0.995, -0.85, 0.05, 0.012),
+                                          ("Abdeckung", silver, 0.965, -0.83, 0.03, 0.016)):
+        g = bmesh.new()
+        grid = []
+        for i in range(41):
+            y = y0 + (y1 - y0) * i / 40
+            grid.append([g.verts.new(at(y, -vmax + 2 * vmax * j / 30, lift)) for j in range(31)])
+        for i in range(40):
+            for j in range(30):
+                g.faces.new((grid[i][j], grid[i][j + 1], grid[i + 1][j + 1], grid[i + 1][j]))
+        sheet = mesh_object(name_, g, m_)
+        _finish(sheet)
+        displace(sheet, 0.006, 0.12, midlevel=0.0)
+    for sx in (-1, 1):  # Laschen, die in der Tür eingeklemmt werden
+        a0, a1 = at(-0.6, sx * 0.995, 0.012), at(-0.2, sx * 0.995, 0.012)
+        flap = bmesh.new()
+        vs = [flap.verts.new(a0), flap.verts.new(a1), flap.verts.new((sx * (BW + 0.008), -0.25, 1.0)),
+              flap.verts.new((sx * (BW + 0.008), -0.55, 1.0))]
+        flap.faces.new(vs if sx > 0 else vs[::-1])
+        mesh_object(f"Lasche{sx}", flap, black)
+        box(f"Spiegel{sx}", (0.2, 0.1, 0.12), paint, (sx * (BW + 0.08), -0.74, 1.06), bevel=0.035, segments=5)
+        box(f"Spiegelfuss{sx}", (0.1, 0.06, 0.05), mat("Schwarz", (0.02, 0.02, 0.022), 0.5), (sx * (BW + 0.01), -0.76, 1.02),
+            bevel=0.01)
+        box(f"Scheinwerfer{sx}", (0.36, 0.06, 0.1), mat("Lampe", (0.9, 0.92, 0.95), 0.05, 1.0), (sx * 0.58, -2.0, 0.74),
+            (math.radians(-20), 0, 0), bevel=0.03, segments=4)
+        box(f"Wischer{sx}", (0.55, 0.012, 0.012), mat("Gummi", (0.02, 0.02, 0.02), 0.6), (sx * 0.3, -0.84, 0.985),
+            (0, 0, sx * math.radians(-6)), bevel=0.004)
+    box("Grill", (0.7, 0.06, 0.12), mat("Grill", (0.02, 0.02, 0.025), 0.35), (0, -2.06, 0.6), bevel=0.03)
+    snow = mat("Schnee", (0.9, 0.92, 0.95), 0.75, sss=0.2, sss_radius=(0.05, 0.05, 0.06), sss_scale=0.05)
+    ntt, _ = _nodes(snow)
+    bump(snow, noise(ntt, _coords(ntt), 6, 8, 0.7).outputs["Fac"], 0.4, 0.02)
+    box("Boden", (30, 30, 0.02), snow, (0, 0, -0.01))
+    sun((0.55, -0.55, -0.35), 2.6, 2.0, (1.0, 0.86, 0.7))
+    area((-3.0, -4.0, 3.0), (0, -0.6, 1.0), 3.0, 900, (0.9, 0.94, 1.0))
+    world_gradient((0.92, 0.88, 0.84), (0.3, 0.45, 0.72), 1.0)
+    return {"target": (0.08, -0.62, 1.08), "S": 1.0, "cam": (-2.05, -2.95, 1.5), "lens": 40, "fstop": 0,
+            "backdrop": False, "lights": False, "view": "agx", "world": None, "exposure": -0.3}
 
 
 def fellhandschuh(art: Path) -> dict:
@@ -977,9 +1086,28 @@ def fellhandschuh(art: Path) -> dict:
         me = ev.to_mesh()
         verts = [g.matrix_world @ vv.co for vv in me.vertices]
         tree = BVHTree.FromPolygons(verts, [list(pp.vertices) for pp in me.polygons])
-        top = max(vv.z for vv in verts if vv.y < -0.05)
         ev.to_mesh_clear()
-        parts.append(box(f"Riemen{tag}", (0.096, 0.02, 0.0025), strap, (0.004, -0.07, top - 0.0015), bevel=0.001))
+        # Klettriemen: folgt der gewölbten Oberfläche am Handgelenk
+        rb = bmesh.new()
+        rows = []
+        for i in range(31):
+            x = -0.065 + 0.13 * i / 30
+            row = []
+            for y in (-0.081, -0.059):
+                hit, normal, _, _ = tree.ray_cast(Vector((x, y, 0.3)), Vector((0, 0, -1)))
+                if hit is None:
+                    row = []
+                    break
+                row.append(rb.verts.new(hit + normal * 0.0012))
+            if row:
+                rows.append(row)
+        for r0, r1 in pairwise(rows):
+            rb.faces.new((r0[0], r1[0], r1[1], r0[1]))
+        band = mesh_object(f"Riemen{tag}", rb, strap)
+        sol = band.modifiers.new("Dicke", "SOLIDIFY")
+        sol.thickness = 0.0022
+        _finish(band)
+        parts.append(band)
         if nubs:
             nb = bmesh.new()
             bmesh.ops.create_cone(nb, cap_ends=True, segments=12, radius1=0.0027, radius2=0.0022, depth=0.0036)
@@ -997,6 +1125,10 @@ def fellhandschuh(art: Path) -> dict:
                     x = ix * step + (step / 2 if iy % 2 else 0)
                     hit, normal, _, _ = tree.ray_cast(Vector((x, y, 0.3)), Vector((0, 0, -1)))
                     if hit is None or normal.z < 0.8:
+                        continue
+                    # nicht am Rand: rundherum muss Handschuh sein
+                    if any(tree.ray_cast(Vector((x + dx, y + dy, 0.3)), Vector((0, 0, -1)))[0] is None
+                           for dx, dy in ((0.0045, 0), (-0.0045, 0), (0, 0.0045), (0, -0.0045))):
                         continue
                     ob = link(bpy.data.objects.new(f"N{tag}{k}", nm))
                     ob.location = hit + normal * 0.0012
@@ -1272,6 +1404,7 @@ PRODUCTS = {
     "baender": baender,
     "laptop": laptop,
     "frostschutz": frostschutz,
+    "frostschutz_auto": frostschutz_auto,
     "fellhandschuh": fellhandschuh,
     "wandhaken": wandhaken,
     "rollbeutel": rollbeutel,
@@ -1290,7 +1423,8 @@ def shoot(key: str, out: Path, size: int, samples: int, art: Path) -> Path:
     spec = PRODUCTS[key](art)
     S = spec["S"]
     target = Vector(spec["target"])
-    world(spec.get("world", (0.93, 0.93, 0.95)), spec.get("world_strength", 0.35))
+    if spec.get("world", ()) is not None:
+        world(spec.get("world", (0.93, 0.93, 0.95)), spec.get("world_strength", 0.35))
     if spec.get("backdrop", True):
         cyclorama(S, spec.get("bg", (0.93, 0.92, 0.90)), back=spec.get("back", 1.0))
     if spec.get("lights", True):
