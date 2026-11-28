@@ -237,7 +237,8 @@ class ShopManager:
     def sync(self, report: dict | None = None) -> list[int]:
         approved = self.db.products(["freigegeben", "online"])
         if self.shopify is None:
-            path = export_csv(list(reversed(approved)), self.dir / "shopify-import.csv", self.name)
+            path = export_csv(list(reversed(approved)), self.dir / "shopify-import.csv", self.name,
+                              str(self.scfg.get("image_base_url", "")))
             self.act("shopsync", f"wartet auf deinen Shopify-Zugang – Import-Datei mit {len(approved)} "
                                  f"freigegebenen Produkten liegt bereit ({path.name})")
             return []

@@ -241,24 +241,36 @@ CSV_HEADERS = [
 ]
 
 
-def export_csv(products: list[dict], path: Path, vendor: str) -> Path:
-    """Shopify-Importdatei (Produkte → Importieren). Alle Produkte kommen als Entwurf an."""
+def export_csv(products: list[dict], path: Path, vendor: str, image_base: str = "") -> Path:
+    """Shopify-Importdatei (Produkte → Importieren). Alle Produkte kommen als Entwurf an.
+
+    image_base: öffentliche Adresse des Bilder-Ordners; Shopify lädt die Fotos beim Import von dort.
+    Weitere Fotos eines Produkts stehen in eigenen Zeilen mit demselben Handle.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
+    base = image_base.rstrip("/") + "/" if image_base else ""
     with path.open("w", encoding="utf-8", newline="") as fh:
         writer = csv.DictWriter(fh, fieldnames=CSV_HEADERS)
         writer.writeheader()
         for p in products:
             offer = p["calc"]["offer"]
+            digital = p.get("origin") == "digital"
+            photos = [base + name for name in p.get("photos", [])] if base else []
             writer.writerow({
                 "Handle": p["seo"]["handle"], "Title": p["texts"]["title"], "Body (HTML)": p["texts"]["html"],
                 "Vendor": vendor, "Type": p["collection"], "Tags": ", ".join(p["seo"]["tags"]),
                 "Published": "FALSE", "Option1 Name": "Title", "Option1 Value": "Default Title",
-                "Variant SKU": sku(p), "Variant Grams": int(p.get("weight_g", 0)) * offer["n"],
+                "Variant SKU": sku(p), "Variant Grams": 0 if digital else int(p.get("weight_g", 0)) * offer["n"],
                 "Variant Inventory Policy": "deny", "Variant Fulfillment Service": "manual",
                 "Variant Price": f"{offer['price']:.2f}",
-                "Variant Requires Shipping": "FALSE" if p.get("origin") == "digital" else "TRUE",
+                "Variant Requires Shipping": "FALSE" if digital else "TRUE",
                 "Variant Taxable": "TRUE", "Gift Card": "FALSE", "SEO Title": p["seo"]["seo_title"],
                 "SEO Description": p["seo"]["seo_description"], "Variant Weight Unit": "g",
                 "Cost per item": f"{p['unit_cost'] * offer['n']:.2f}", "Status": "draft",
+                "Image Src": photos[0] if photos else "", "Image Position": 1 if photos else "",
+                "Image Alt Text": p["texts"]["title"] if photos else "",
             })
+            for pos, url in enumerate(photos[1:], start=2):
+                writer.writerow({"Handle": p["seo"]["handle"], "Image Src": url, "Image Position": pos,
+                                 "Image Alt Text": p["texts"]["title"]})
     return path

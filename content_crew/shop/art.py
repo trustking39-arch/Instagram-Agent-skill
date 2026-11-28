@@ -46,7 +46,9 @@ def _frame(key: str, collection: str, body: str, defs: str = "") -> str:
 
 
 def _shadow(key: str, cx: float, cy: float, rx: float, ry: float) -> str:
-    return f'<ellipse cx="{cx}" cy="{cy}" rx="{rx}" ry="{ry}" fill="url(#sh-{key})"/>'
+    """Weicher Bodenschatten aus drei halbtransparenten Ellipsen (rendert im Browser und in Skia gleich)."""
+    return "".join(f'<ellipse cx="{cx}" cy="{cy}" rx="{rx * f:.1f}" ry="{ry * f:.1f}" fill="#1b2335" '
+                   f'fill-opacity="{a}"/>' for f, a in ((1.0, 0.06), (0.75, 0.07), (0.5, 0.08)))
 
 
 def _snow(points: list[tuple[int, int, float]]) -> str:
