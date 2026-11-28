@@ -9,6 +9,7 @@ from __future__ import annotations
 import csv
 import logging
 import time
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 
@@ -55,8 +56,9 @@ class ShopManager:
             self.notifier.notify(kind, text)
 
     # --- ein Produkt durch die Abteilung schicken ------------------------------------------
-    def evaluate(self, idea: dict) -> dict:
+    def evaluate(self, idea: dict, settings: Settings | None = None) -> dict:
         name = idea["name"]
+        s = settings or self.s
         self.act("buyer", f"prüft Einkauf und Versand: {name}")
         p = self.buyer.prepare(idea)
         spec = ORIGINS[p["origin"]]
@@ -72,7 +74,7 @@ class ShopManager:
         self.act("safety", f"{name}: " + ("keine Auffälligkeiten" if p["safety"]["level"] == "ok"
                                           else f"{len(p['safety']['warnings'])} Hinweis(e) für den Text"))
         self.act("calculator", f"rechnet Preis und Gewinn für {name}")
-        p["calc"] = plan_offer(p, self.s)
+        p["calc"] = plan_offer(p, s)
         if not p["calc"]["ok"]:
             self.act("calculator", f"{name} rechnet sich nicht")
             p["reason"] = p["calc"]["reason"]
@@ -82,13 +84,37 @@ class ShopManager:
         self.act("calculator", f"{name}: {offer['label']} für {eur(offer['price'])}, "
                                f"{eur(p['calc']['profit'])} Gewinn pro Bestellung")
         self.act("copywriter", f"schreibt die Produktseite: {name}")
-        p["texts"] = self.copywriter.write(p, p["calc"], self.s)
+        p["texts"] = self.copywriter.write(p, p["calc"], s)
         self.act("seo", f"optimiert „{p['texts']['title']}“ für Google")
         p["seo"] = seo(p, p["texts"], self.name)
         self.act("ads", f"plant Videos und Anzeigen-Test für {name}")
         p["ads"] = ad_plan(p, p["calc"])
         p["id"] = self.db.add_product(name, p, status="wartet")
         return {**p, "status": "wartet"}
+
+    def add_art(self) -> list[dict]:
+        """Eigene Kunst als Produkte: Poster (Druck auf Bestellung) und ein Wallpaper-Paket (Download).
+
+        Die Motive rechnet die Animations-Engine – Einkauf entfällt. Verkauft wird vor allem über die
+        eigenen TikTok-Videos, daher weniger Werbekosten pro Bestellung als bei den Alltagshelfern.
+        """
+        from content_crew.shop import kunst
+
+        known = self.known_names()
+        added = []
+        for idea in kunst.products(self.dir / "kunst"):
+            if idea["name"] in known:
+                continue
+            digital = idea["kind"] == "digital"
+            self.act("webdesigner", f"gestaltet „{idea['name']}“")
+            size = (270, 585) if digital else (360, 509)
+            idea["image"] = kunst.thumbnail_data(idea["world"], idea["hour"], size)
+            settings = replace(self.s, ads=1.0, min_profit=3.0) if digital else replace(self.s, ads=2.0)
+            added.append(self.evaluate(idea, settings))
+        if added:
+            self.build_site()
+            self.write_preview()
+        return added
 
     def known_names(self) -> set[str]:
         return {p["name"] for p in self.db.products(limit=2000)}

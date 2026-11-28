@@ -147,7 +147,8 @@ class Shopify:
         variant: dict = {"optionValues": [{"optionName": "Title", "name": "Default Title"}],
                          "price": f"{offer['price']:.2f}", "sku": sku(p)}
         if with_cost:
-            variant["inventoryItem"] = {"cost": f"{p['unit_cost'] * offer['n']:.2f}", "tracked": False}
+            variant["inventoryItem"] = {"cost": f"{p['unit_cost'] * offer['n']:.2f}", "tracked": False,
+                                        "requiresShipping": p.get("origin") != "digital"}
         data = {
             "title": p["texts"]["title"], "descriptionHtml": p["texts"]["html"], "handle": p["seo"]["handle"],
             "productType": p["collection"], "vendor": vendor, "tags": p["seo"]["tags"],
@@ -254,7 +255,8 @@ def export_csv(products: list[dict], path: Path, vendor: str) -> Path:
                 "Published": "FALSE", "Option1 Name": "Title", "Option1 Value": "Default Title",
                 "Variant SKU": sku(p), "Variant Grams": int(p.get("weight_g", 0)) * offer["n"],
                 "Variant Inventory Policy": "deny", "Variant Fulfillment Service": "manual",
-                "Variant Price": f"{offer['price']:.2f}", "Variant Requires Shipping": "TRUE",
+                "Variant Price": f"{offer['price']:.2f}",
+                "Variant Requires Shipping": "FALSE" if p.get("origin") == "digital" else "TRUE",
                 "Variant Taxable": "TRUE", "Gift Card": "FALSE", "SEO Title": p["seo"]["seo_title"],
                 "SEO Description": p["seo"]["seo_description"], "Variant Weight Unit": "g",
                 "Cost per item": f"{p['unit_cost'] * offer['n']:.2f}", "Status": "draft",

@@ -91,6 +91,12 @@ class Adventure(DinoTrip):
                            rng.uniform(0.5, 1.2)) for _ in range(46)]
         self.flakes = np.array([[rng.uniform(0, W), rng.uniform(0, H), rng.uniform(0.5, 1.0)] for _ in range(320)])
         self.cover_x = W * 0.3
+        self.poster = bool(params.get("poster"))  # Kunstdruck/Wallpaper: ohne Stunden-Anzeige, tieferer Horizont
+        if self.poster:
+            self.ground = g = H * 0.84
+            self.eyes = [(W * 0.16, g - H * 0.05, 0.0), (W * 0.86, g - H * 0.08, 1.7), (W * 0.62, g - H * 0.04, 3.1)]
+            self.fireflies = [(x, y + H * 0.08, ph, sp) for x, y, ph, sp in self.fireflies]
+            self.layers = None if headless else self._make_layers()
 
     # --- Zeit und Himmel -------------------------------------------------------------
     def epi(self) -> float:
@@ -737,6 +743,8 @@ class Adventure(DinoTrip):
 
     def _draw_text(self, c, hour: float) -> None:
         W, H = self.W, self.H
+        if self.poster:
+            return
         if self.t < 2.4:
             a = 1 - _phase(self.t, 1.8, 2.4)
             t1, t2 = self.world["title"]

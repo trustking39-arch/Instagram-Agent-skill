@@ -20,6 +20,8 @@ ICONS = {  # Kategorie-Symbole (24×24, Strichzeichnung) – für Menü und Ersa
                  '<circle cx="19" cy="12.5" r="1.5"/><path d="M12 12c-2.6 0-4.5 2.5-4.5 4.2 0 1.6 1.4 2.3 2.7 '
                  '2 1-.2 1.2-.5 1.8-.5s.8.3 1.8.5c1.3.3 2.7-.4 2.7-2 0-1.7-1.9-4.2-4.5-4.2z"/>',
     "Schreibtisch & Handy": '<rect x="8" y="3.5" width="8" height="15" rx="2"/><path d="M11 15.5h2M6 21h12"/>',
+    "Kunst & Poster": '<rect x="5" y="4" width="14" height="16" rx="1"/><path d="M7 16l3.5-4 3 3 2-2 1.5 3"/>'
+                      '<circle cx="14.5" cy="8.5" r="1.3"/>',
 }
 
 BACKDROPS = {  # Studio-Hintergrund je Kategorie (oben, unten)
@@ -29,6 +31,7 @@ BACKDROPS = {  # Studio-Hintergrund je Kategorie (oben, unten)
     "Sport & Fitness": ("#fbefed", "#f1d8d4"),
     "Haustiere": ("#f3edf9", "#e1d5ef"),
     "Schreibtisch & Handy": ("#eef1f6", "#d8dfea"),
+    "Kunst & Poster": ("#f1ece4", "#ddd2c2"),
 }
 
 
@@ -275,5 +278,9 @@ def collection_art(collection: str, key: str = "c") -> str:
 
 def product_art(p: dict) -> str:
     key = f"p{p.get('id', 0)}"
+    if p.get("image"):  # echtes Motiv: Poster an der Wand bzw. Wallpaper auf dem Handy
+        kind = "phone" if p.get("kind") == "digital" else "poster"
+        alt = p.get("name", "").replace('"', "")
+        return f'<div class="art mock {kind}"><img src="{p["image"]}" alt="{alt}" loading="lazy"></div>'
     draw = ART.get(p.get("name", ""))
     return draw(key) if draw else collection_art(p.get("collection", ""), key)

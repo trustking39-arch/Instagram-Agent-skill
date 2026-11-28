@@ -155,7 +155,10 @@ def product_texts(p: dict, calc: dict, s: Settings) -> dict:
             f"<ul>{''.join(f'<li>{esc(b)}</li>' for b in p['benefits'])}</ul>"
             f"<h3>So funktioniert’s</h3><p>{esc(p['usage'])}</p>"
             f"<h3>Details</h3><ul><li>Material: {esc(p['material'])}</li><li>Lieferumfang: {esc(contents)}</li></ul>"
-            f"<h3>Versand</h3><p>Lieferzeit {esc(p['delivery_days'])} Werktage. {esc(shipping_sentence(s))}</p>")
+            + (f"<h3>Download</h3><p>Sofort nach dem Kauf als Download – kein Versand. Mit dem Download beginnt die "
+               "Ausführung des Vertrags; dein Widerrufsrecht erlischt, wenn du dem an der Kasse zustimmst.</p>"
+               if p.get("origin") == "digital" else
+               f"<h3>Versand</h3><p>Lieferzeit {esc(p['delivery_days'])} Werktage. {esc(shipping_sentence(s))}</p>"))
     gpsr = p.get("gpsr") or {}
     if gpsr.get("hersteller"):
         rows = [("Hersteller", gpsr["hersteller"]), ("Verantwortliche Person in der EU", gpsr.get("eu_person", "")),
@@ -195,7 +198,8 @@ def seo(p: dict, texts: dict, shop_name: str) -> dict:
     if len(title) > 60:
         title = cut(texts["title"], 60)
     benefits = ". ".join(b.rstrip(".") for b in p["benefits"][:2])
-    desc = cut(f"{p['name']}: {benefits}. Lieferung in {p['delivery_days']} Werktagen.", 155)
+    delivery = "Sofort-Download." if p.get("origin") == "digital" else f"Lieferung in {p['delivery_days']} Werktagen."
+    desc = cut(f"{p['name']}: {benefits}. {delivery}", 155)
     tags = [p["collection"]] + (["Winter"] if p.get("season") == "winter" else [])
     return {"seo_title": title, "seo_description": desc, "handle": slugify(texts["title"]), "tags": tags}
 

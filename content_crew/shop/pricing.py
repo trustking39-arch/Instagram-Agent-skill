@@ -18,6 +18,10 @@ ORIGINS: dict[str, dict] = {
                      "extra": 0.6, "duty": 3.0, "days": "8–15"},
     "eigenlager": {"label": "Eigenes Lager, Versand mit der Post", "steps": [(1000, 5.2), (2000, 6.9)],
                    "extra": 0.3, "duty": 0.0, "days": "1–3", "packing": 0.5},
+    "pod": {"label": "Druckpartner (Druck auf Bestellung)", "steps": [(500, 5.5), (2000, 7.5)], "extra": 1.5,
+            "duty": 0.0, "days": "4–8"},
+    "digital": {"label": "Sofort-Download", "steps": [(10 ** 9, 0.0)], "extra": 0.0, "duty": 0.0, "days": "sofort",
+                "digital": True},
 }
 
 
@@ -116,12 +120,13 @@ def plan_offer(product: dict, s: Settings) -> dict:
     lo, hi = float(market[0]), float(market[1])
     duty = spec["duty"]
     tried = []
-    for n in (1, 2, 3):  # n Stück pro Angebot (1 = einzeln, sonst Set)
+    sizes = (1,) if spec.get("digital") else (1, 2, 3)
+    for n in sizes:  # n Stück pro Angebot (1 = einzeln, sonst Set)
         set_cost = n * unit
         ship = shipping_cost(weight, n, origin)
         floor = lo * n * (0.9 if n > 1 else 1.0)  # nicht billiger als der Markt (Sets mit 10 % Nachlass)
         g = required_gross(1, set_cost, ship, duty, s, s.min_profit)
-        fee = s.shipping_fee
+        fee = 0.0 if spec.get("digital") else s.shipping_fee
         price = nice_price(max(g - fee, floor))
         if s.free_from and price >= s.free_from:
             fee = 0.0
@@ -142,7 +147,7 @@ def plan_offer(product: dict, s: Settings) -> dict:
     notes = []
     if duty:
         notes.append(f"Zoll: {eur(duty)} pro Paket (Direktversand aus einem Nicht-EU-Land).")
-    if s.free_from and price < s.free_from:
+    if s.free_from and price < s.free_from and not spec.get("digital"):
         k = math.ceil(s.free_from / price)
         big = breakdown(price, k, 0.0, set_cost, shipping_cost(weight, k * n, origin), duty, s)
         big_profit = big["Gewinn"]

@@ -268,6 +268,12 @@ def cmd_shop(args) -> None:
         print(f"Shopify-Importdatei: {manager.dir / 'shopify-import.csv'}")
     elif action == "vorschau":
         print(manager.write_preview())
+    elif action == "kunst":
+        added = manager.add_art()
+        for p in added:
+            offer = p["calc"]["offer"]
+            print(f"  P{p['id']:<4} {p['name'][:50]:50} {eur(offer['price']):>9}  Gewinn {eur(p['calc']['profit'])}")
+        print(f"{len(added)} Kunst-Produkte angelegt. Druckdateien: {manager.dir / 'kunst'}")
 
 
 def cmd_status(args) -> None:
@@ -355,9 +361,10 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--duration", type=int)
     p.add_argument("--fps", type=int)
     p.set_defaults(func=cmd_animate)
-    p = sub.add_parser("shop", help="Shop-Abteilung: runde | status | ok P1 | nein P1 | preis P1 2,40 | export | vorschau")
+    p = sub.add_parser("shop", help="Shop-Abteilung: runde | status | ok P1 | nein P1 | preis P1 2,40 | export | "
+                                    "vorschau | kunst")
     p.add_argument("aktion", nargs="?", default="runde",
-                   choices=["runde", "status", "ok", "nein", "preis", "export", "vorschau"])
+                   choices=["runde", "status", "ok", "nein", "preis", "export", "vorschau", "kunst"])
     p.add_argument("werte", nargs="*", help="Produktnummern (P1 P2 …) bzw. Nummer und Einkaufspreis")
     p.set_defaults(func=cmd_shop)
     p = sub.add_parser("publish-pending", help="alle wartenden Videos hochladen")

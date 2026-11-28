@@ -13,6 +13,7 @@ COLLECTIONS = {
     "Sport & Fitness": "Training zu Hause und unterwegs",
     "Haustiere": "Für Katzen, Hunde und ihre Menschen",
     "Schreibtisch & Handy": "Aufgeräumt arbeiten, bequem schauen",
+    "Kunst & Poster": "Motive aus unserer TikTok-Serie „24 Hours In …“",
 }
 
 IDEAS: list[dict] = [

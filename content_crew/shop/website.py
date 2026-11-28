@@ -154,9 +154,14 @@ main > section, .hero .inner > *, .collage > div { min-width: 0; }
 .btn.navy { background: var(--navy); color: var(--on-navy); }
 .btn.ghost { background: transparent; border-color: var(--line); color: var(--ink); }
 .collage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
-.collage div { border-radius: 18px; overflow: hidden; aspect-ratio: 4 / 3; max-width: 100%; }
-.collage div:first-child { grid-column: 1 / -1; aspect-ratio: 8 / 5; }
+.collage > div { position: relative; border-radius: 18px; overflow: hidden; aspect-ratio: 4 / 3; max-width: 100%; }
+.collage > div:first-child { grid-column: 1 / -1; aspect-ratio: 8 / 5; }
 svg.art { display: block; width: 100%; height: 100%; }
+.mock { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: linear-gradient(180deg, #efe9df, #d9cfbf); }
+.card .img, .cat .img, .pd .img, .line .thumb { position: relative; overflow: hidden; }
+.mock img { display: block; height: 84%; width: auto; max-width: 92%; object-fit: contain; }
+.mock.poster img { border: 5px solid #ffffff; box-shadow: 0 10px 22px rgba(20, 20, 30, .28), 0 2px 4px rgba(20, 20, 30, .2); }
+.mock.phone img { height: 88%; border-radius: 14px; border: 5px solid #15171d; box-shadow: 0 10px 22px rgba(20, 20, 30, .3); }
 .trust ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
 .trust li { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 12px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
 .trust svg { width: 40px; height: 40px; padding: 9px; border-radius: 12px; background: var(--navy-soft); fill: none; stroke: var(--ink); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
@@ -322,8 +327,12 @@ def render_preview(site: dict, products: list[dict], todos: list[dict] | None = 
     name = site["shop_name"]
     brand, _, rest = name.partition(" ")
     ship_line = (f"Ab {eur(s.free_from)} versandkostenfrei" if s.free_from > 0 else shipping_sentence(s))
-    hero_arts = [arts[p["id"]] for p in winter_first[:3]]
-    if hero_arts:
+    art_first = sorted([p for p in shown if p.get("image") and p.get("kind") == "pod"],
+                       key=lambda p: ["iceage", "arctic", "medieval"].index(p["world"])
+                       if p.get("world") in ("iceage", "arctic", "medieval") else 9)
+    hero_items = (art_first + winter_first)[:3]
+    hero_arts = [arts[p["id"]] for p in hero_items]
+    if hero_arts and hero_arts[0].startswith("<svg"):
         hero_arts[0] = hero_arts[0].replace('viewBox="0 0 400 300"', 'viewBox="0 25 400 250"', 1)
     collage = "".join(f"<div>{a}</div>" for a in hero_arts)
     counts: dict[str, int] = {}
@@ -369,7 +378,7 @@ def render_preview(site: dict, products: list[dict], todos: list[dict] | None = 
     const t = $('#toast'); t.textContent = text; t.hidden = false;
     clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 2600);
   }
-  function art(id) { const el = document.querySelector(`.card[data-id="${id}"] svg.art`); return el ? el.outerHTML : ''; }
+  function art(id) { const el = document.querySelector(`.card[data-id="${id}"] .art`); return el ? el.outerHTML : ''; }
   function render() {
     const ids = Object.keys(cart).filter((id) => cart[id] > 0 && byId[id]);
     const count = ids.reduce((n, id) => n + cart[id], 0);
@@ -389,15 +398,16 @@ def render_preview(site: dict, products: list[dict], todos: list[dict] | None = 
       lines.append(row);
     }
     const sub = ids.reduce((sum, id) => sum + byId[id].price * cart[id], 0);
+    const physical = ids.some((id) => byId[id].days !== 'sofort');
     const free = D.freeFrom > 0 && sub >= D.freeFrom;
-    const ship = !ids.length || free ? 0 : D.fee;
+    const ship = !physical || free ? 0 : D.fee;
     $('#sub').textContent = eur(sub);
     $('#ship').textContent = ids.length ? (ship ? eur(ship) : 'gratis') : '–';
     $('#total').textContent = eur(sub + ship);
     const left = Math.max(0, D.freeFrom - sub);
     $('#barFill').style.width = D.freeFrom > 0 ? Math.min(100, sub / D.freeFrom * 100) + '%' : '100%';
-    $('#freeHint').textContent = !D.freeFrom ? '' : left > 0
-      ? `Noch ${eur(left)} bis zum Gratisversand.` : 'Du bekommst Gratisversand.';
+    $('#freeHint').textContent = !ids.length ? '' : !physical ? 'Nur Downloads im Warenkorb – kein Versand nötig.'
+      : !D.freeFrom ? '' : left > 0 ? `Noch ${eur(left)} bis zum Gratisversand.` : 'Du bekommst Gratisversand.';
   }
   function add(id, n = 1) { cart[id] = (cart[id] || 0) + n; save(); render(); toast(`„${byId[id].title}“ liegt im Warenkorb.`); }
   const drawer = $('#drawer');
@@ -420,7 +430,9 @@ def render_preview(site: dict, products: list[dict], todos: list[dict] | None = 
     $('#pdShort').textContent = p.short;
     const ul = $('#pdBenefits'); ul.replaceChildren(...p.benefits.map((b) => { const li = document.createElement('li'); li.textContent = b; return li; }));
     $('#pdDesc').innerHTML = p.html;
-    $('#pdDays').textContent = p.days;
+    $('#pdShip').textContent = p.days === 'sofort'
+      ? 'Sofort nach dem Kauf als Download – kein Versand. Dein Widerrufsrecht erlischt mit dem Download, wenn du dem an der Kasse zustimmst.'
+      : `Lieferzeit ${p.days} Werktage. ${D.shipText} Du kannst innerhalb von 14 Tagen ohne Angabe von Gründen widerrufen.`;
     $('#pdQty').textContent = qty;
     dlg.showModal();
   }
@@ -454,7 +466,8 @@ def render_preview(site: dict, products: list[dict], todos: list[dict] | None = 
   render();
 })();
 </script>"""
-    shop_data = json.dumps({"products": data, "fee": s.shipping_fee, "freeFrom": s.free_from},
+    shop_data = json.dumps({"products": data, "fee": s.shipping_fee, "freeFrom": s.free_from,
+                            "shipText": shipping_sentence(s)},
                            ensure_ascii=False).replace("</", "<\\/")
     year = str(__import__("datetime").date.today().year)
     return f"""<title>{esc(name)} Vorschau</title>
@@ -476,7 +489,7 @@ def render_preview(site: dict, products: list[dict], todos: list[dict] | None = 
   <section class="hero gut"><div class="inner">
     <div><span class="eyebrow">{"Winter-Auswahl" if winter_first and winter_first[0].get("season") == "winter" else "Neu im Shop"}</span>
     <h1>{esc(site["hero"]["title"])}</h1>
-    <p>Kleine Helfer, die ein echtes Problem lösen – fürs Auto, für zu Hause, für die Reise und dein Haustier. Versand {esc(origin_text)}.</p>
+    <p>Kleine Helfer, die ein echtes Problem lösen – fürs Auto, für zu Hause, für die Reise und dein Haustier. Dazu Poster und Wallpaper aus unserer TikTok-Serie „24 Hours In …“.</p>
     <div class="ctas"><a class="btn gold" href="#produkte">Jetzt entdecken</a><a class="btn ghost" href="#hilfe">Versand &amp; Rückgabe</a></div></div>
     <div class="collage">{collage}</div>
   </div></section>
@@ -532,7 +545,7 @@ def render_preview(site: dict, products: list[dict], todos: list[dict] | None = 
     <div class="tools"><div class="qty"><button id="pdMinus" aria-label="weniger">−</button><span id="pdQty">1</span><button id="pdPlus" aria-label="mehr">+</button></div>
     <button class="btn navy" id="pdAdd">In den Warenkorb</button></div>
     <details><summary>Beschreibung</summary><div id="pdDesc"></div></details>
-    <details><summary>Versand &amp; Rückgabe</summary><div><p>Lieferzeit <span id="pdDays"></span> Werktage. {esc(shipping_sentence(s))} Du kannst innerhalb von 14 Tagen ohne Angabe von Gründen widerrufen.</p></div></details>
+    <details><summary>Versand &amp; Rückgabe</summary><div><p id="pdShip"></p></div></details>
   </div></div></div></dialog>
 <div class="toast" id="toast" role="status" hidden></div>
 <script type="application/json" id="shopData">{shop_data}</script>
